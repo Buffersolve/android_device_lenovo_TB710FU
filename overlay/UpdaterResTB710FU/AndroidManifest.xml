@@ -4,10 +4,10 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.evolution.updater.overlay.tb710fu">
+    package="net.pixelos.ota.overlay.tb710fu">
     <application android:hasCode="false" />
     <overlay
-        android:targetPackage="org.evolution.updater"
+        android:targetPackage="net.pixelos.ota"
         android:isStatic="true"
         android:priority="700" />
 </manifest>

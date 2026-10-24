@@ -106,6 +106,23 @@ patched repositories, so run it again after syncing.
    `adb sideload PixelOS_TB710FU-17.0-<date>.zip`.
 3. Coming from stock or another ROM, format data in recovery.
 
+## OTA updates
+
+Unofficial builds include the PixelOS Updater (`net.pixelos.ota`), pointed by
+`overlay/UpdaterResTB710FU` at
+[Buffersolve/PixelOS_TB710FU_OTA](https://github.com/Buffersolve/PixelOS_TB710FU_OTA);
+the zips are hosted on SourceForge. To publish a build:
+
+```bash
+SF_PROJECT=<project> SF_USER=<user> device/lenovo/TB710FU/tools/ota_release.sh \
+    out/target/product/TB710FU/PixelOS_TB710FU-17.0-<date>.zip changelog.md
+```
+
+It uploads the zip (leave out `SF_USER` if it is already uploaded), writes the
+feed entry with `packages/apps/Updater/tools/pixelos_feed.py` and the changelog,
+and pushes the OTA repository. Updates must be signed with the same keys as
+the installed build.
+
 ## Extracting blobs
 
 ```bash

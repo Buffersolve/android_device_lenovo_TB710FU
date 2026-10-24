@@ -288,6 +288,19 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     vendor.qti.hardware.memtrack-service
 
+# Updater
+# vendor/custom/config/ota.mk only adds it for official builds (IS_OFFICIAL);
+# unofficial builds get it here, pointed at our feed by UpdaterResTB710FU.
+# The Updater refuses to check without a nonempty build type.
+PRODUCT_PACKAGES += \
+    Updater
+
+PRODUCT_COPY_FILES += \
+    vendor/custom/config/permissions/privapp-permissions-custom.xml:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/permissions/privapp-permissions-custom.xml
+
+PRODUCT_PRODUCT_PROPERTIES += \
+    net.pixelos.build_type=unofficial
+
 # Overlays
 PRODUCT_ENFORCE_RRO_TARGETS := *
 PRODUCT_PACKAGES += \

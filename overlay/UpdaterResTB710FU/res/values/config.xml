@@ -4,11 +4,10 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources>
-    <!-- Point the Updater at our own OTA repo instead of the official
-         Evolution-X one. The codename is hardcoded rather than using the
-         Updater's {device} placeholder: that placeholder is filled from
-         ro.evolution.device, which SuSFS hiding strips out of build.prop,
-         leaving an empty device and a .../builds/.json 404. Hardcoding keeps
-         OTA working regardless of what prop hiding does. -->
-    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/sungwon1002/TB710FU_EVOX_OTA/main/builds/TB710FU.json</string>
+    <!-- Unofficial builds: the OTA feed and changelog come from our own repo
+         (written by tools/ota_release.sh), the zips from SourceForge.
+         {branch} is net.pixelos.version (seventeen), {device} ro.custom.device. -->
+    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/Buffersolve/PixelOS_TB710FU_OTA/main/{branch}/{device}.json</string>
+    <string name="changelog_url" translatable="false">https://raw.githubusercontent.com/Buffersolve/PixelOS_TB710FU_OTA/main/{branch}/changelogs/{device}.md</string>
+    <string name="report_issue_url" translatable="false">https://github.com/Buffersolve/android_device_lenovo_TB710FU/issues</string>
 </resources>
