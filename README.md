@@ -119,6 +119,13 @@ repository, so restore the stock kernel files afterwards with
 regenerates the vendor `Android.bp` with a plain `PenService-stock` filegroup;
 split the APK again and keep the genrule before committing.
 
+## Signing
+
+Released builds are signed with private release keys (inline signing from
+`vendor/lineage-priv/keys`, which is not part of any repository). Without that
+directory the build uses the public test keys. Builds with different keys
+cannot be installed over each other without formatting data.
+
 ## Verified boot
 
 Images are signed with the public AOSP `testkey_rsa4096`, like the stock
