@@ -1,0 +1,45 @@
+diff --git a/packages/SystemUI/res/values/custom_fgs_manager_config.xml b/packages/SystemUI/res/values/custom_fgs_manager_config.xml
+new file mode 100644
+index 000000000..8701ed478
+--- /dev/null
++++ b/packages/SystemUI/res/values/custom_fgs_manager_config.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 The LineageOS Project
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- Packages whose foreground services are kept out of the Active apps list
++         (FgsManagerController), like services running as the system uid. Meant
++         for device services that must stay in the foreground (e.g. accessory
++         connections) but are not something the user should stop. The services
++         keep running. -->
++    <string-array name="config_fgsManagerHiddenPackages" translatable="false" />
++</resources>
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt b/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
+index a5e1fa846..482bd332a 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
++++ b/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
+@@ -233,6 +233,10 @@ constructor(
+         resources.getStringArray(com.android.internal.R.array.vendor_stoppable_fgs_system_apps)
+     }
+ 
++    private val hiddenApps by lazy {
++        resources.getStringArray(R.array.config_fgsManagerHiddenPackages)
++    }
++
+     override fun init() {
+         synchronized(lock) {
+             if (initialized) {
+@@ -768,6 +772,10 @@ constructor(
+             if (isStoppableApp(packageName)) {
+                 uiControl = UIControl.NORMAL
+             }
++            // Device services configured to stay out of the list, like system uid ones.
++            if (hiddenApps.contains(packageName)) {
++                uiControl = UIControl.HIDE_ENTRY
++            }
+ 
+             uiControlInitialized = true
+         }

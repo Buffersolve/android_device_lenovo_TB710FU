@@ -12,4 +12,12 @@
     <string name="quick_settings_tiles_default_split" translatable="false">
         wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord,custom(com.tb520fu.parts/.PcModeTileService)
     </string>
+
+    <!-- Smart Accessories (ZUI UDevice: pen and keyboard connection, battery,
+         firmware) runs a connectedDevice foreground service all the time; keep
+         it out of the Active apps list without stopping it
+         (frameworks_base-0005). -->
+    <string-array name="config_fgsManagerHiddenPackages" translatable="false">
+        <item>com.zui.udevice</item>
+    </string-array>
 </resources>
