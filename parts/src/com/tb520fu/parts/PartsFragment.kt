@@ -104,6 +104,7 @@ class PartsFragment : SettingsBasePreferenceFragment(), Preference.OnPreferenceC
         vramPref.entryValues = MemoryExtension.SIZES_GB.map { it.toString() }.toTypedArray()
         vramPref.value = MemoryExtension.selectedGb.toString()
         vramPref.onPreferenceChangeListener = this
+        vramPref.isVisible = MemoryExtension.isSupported
 
         statusPref = findPreference(KEY_STATUS)!!
     }

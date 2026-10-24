@@ -20,6 +20,14 @@ object MemoryExtension {
     private const val TAG = "TB710FUParts"
     private const val PROP = "persist.sys.tb520fu.vram_gb"
 
+    /**
+     * Whether the kernel supports a zram backing device (CONFIG_ZRAM_WRITEBACK).
+     * Without it fstab.zram.<size> with zram_backingdev_size makes swapon_all fail,
+     * which would leave the device without any swap.
+     */
+    val isSupported: Boolean
+        get() = File("/sys/block/zram0/backing_dev").exists()
+
     /** Sizes that have a matching fstab.zram.<size> in the vendor image. */
     val SIZES_GB = intArrayOf(0, 2, 4, 6, 8, 12, 16)
 
