@@ -30,6 +30,16 @@ Pixel Launcher update), instead of silently shipping an unpatched launcher.
    the proxy without clearing the flag, so the later ACTION_UP cannot clear it
    and the taskbar never times out. Run the ACTION_UP/CANCEL cleanup first.
 
+4. Taskbar left in the launcher state after a quick switch from home (swipe
+   along the nav handle on the home screen). TaskbarLauncherStateController
+   .onStateChangeApplied() captures isInLauncher, and for
+   QUICK_SWITCH_FROM_HOME re-enters itself (updateStateForFlag(FLAG_VISIBLE,
+   false); applyState(0)), which correctly sets FLAG_IN_APP. The outer call
+   then adds an animator listener with the stale isInLauncher = true, whose
+   onAnimationStart sets FLAG_IN_APP back to false: the app is in front but
+   the taskbar stays in its home state and never stashes. Make the listener
+   read isInLauncher(mState) when it runs.
+
 usage: patch_launcher.py --baksmali CMD --smali CMD --helper-dex-zip ZIP <in.apk> <out.apk>
 """
 import argparse
@@ -73,6 +83,29 @@ def patch_smali(root):
              + "->setUpdatesDeferred(" + HOST_VIEW + "Z)V")
     for method in ("init", "finish"):
         edit(root, "com/android/quickstep/views/FloatingWidgetView", method, call, hider, 1)
+
+    # 4. taskbar left in the launcher state after a quick switch from home: the
+    #    onStateChangeApplied() animator listener must use the state at the time it runs
+    tlsc = "Lcom/android/launcher3/taskbar/TaskbarLauncherStateController;"
+    listeners = []
+    tdir = os.path.join(root, "com/android/launcher3/taskbar")
+    for name in sorted(os.listdir(tdir)):
+        if not name.startswith("TaskbarLauncherStateController$") or not name.endswith(".smali"):
+            continue
+        src = open(os.path.join(tdir, name)).read()
+        if ("->val$isInLauncher:Z" in src and "->updateOverviewDragState(" in src
+                and "->updateStateForFlag(JZ)Z" in src):
+            listeners.append(name[:-len(".smali")])
+    if len(listeners) != 1:
+        raise SystemExit(f"isInLauncher animator listener not unique: {listeners}")
+    cls = listeners[0]
+    lcls = "L" + "com/android/launcher3/taskbar/" + cls + ";"
+    edit(root, "com/android/launcher3/taskbar/" + cls, "onAnimationStart",
+         r"iget-boolean ([vp]\d+), p0, " + re.escape(lcls) + r"->val\$isInLauncher:Z",
+         r"iget-object \1, p0, " + lcls + "->this$0:" + tlsc + "\n\n"
+         r"    iget \1, \1, " + tlsc + "->mState:I\n\n"
+         r"    invoke-static {\1}, " + tlsc + "->isInLauncher(I)Z\n\n"
+         r"    move-result \1", 2)
 
     # 3. stuck transient taskbar: clean up like ACTION_UP/CANCEL before dropping the proxy
     consumer = "Lcom/android/quickstep/inputconsumers/TaskbarUnstashInputConsumer;"
