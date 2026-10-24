@@ -7,7 +7,9 @@
 // launcher DeviceProfile, so the dock lands exactly on the hotseat with the
 // stock 66dp grid icons, and the taskbar search bar is hidden while the
 // hotseat search bar widget flies into place (TaskbarQsbHider), so it is not
-// drawn twice when returning from Google search. classes.dex is edited with
+// drawn twice when returning from Google search; the transient taskbar no
+// longer stays stuck open in apps when the gesture input consumer is switched
+// mid-touch. classes.dex is edited with
 // baksmali/smali from external/google-smali. The prebuilt comes from
 // vendor/pixel/launcher; the patched APK is re-signed with the platform key,
 // which Google app (Discover) and At a Glance accept. Listed in

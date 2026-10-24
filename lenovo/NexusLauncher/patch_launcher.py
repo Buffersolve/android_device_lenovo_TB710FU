@@ -23,6 +23,13 @@ Pixel Launcher update), instead of silently shipping an unpatched launcher.
    animation; route them through TaskbarQsbHider, which hides the taskbar
    search bar meanwhile, like the launcher already does for app icons.
 
+3. Transient taskbar stuck open in apps. TaskbarUnstashInputConsumer sets
+   FLAG_AUTOHIDE_SUSPEND_TOUCHING on ACTION_DOWN and clears it on ACTION_UP /
+   ACTION_CANCEL through mTaskbarApiProxy. When the input consumer is switched
+   mid-gesture (e.g. TYPE_RESET_GESTURE), onConsumerAboutToBeSwitched() nulls
+   the proxy without clearing the flag, so the later ACTION_UP cannot clear it
+   and the taskbar never times out. Run the ACTION_UP/CANCEL cleanup first.
+
 usage: patch_launcher.py --baksmali CMD --smali CMD --helper-dex-zip ZIP <in.apk> <out.apk>
 """
 import argparse
@@ -66,6 +73,14 @@ def patch_smali(root):
              + "->setUpdatesDeferred(" + HOST_VIEW + "Z)V")
     for method in ("init", "finish"):
         edit(root, "com/android/quickstep/views/FloatingWidgetView", method, call, hider, 1)
+
+    # 3. stuck transient taskbar: clean up like ACTION_UP/CANCEL before dropping the proxy
+    consumer = "Lcom/android/quickstep/inputconsumers/TaskbarUnstashInputConsumer;"
+    edit(root, "com/android/quickstep/inputconsumers/TaskbarUnstashInputConsumer",
+         "onConsumerAboutToBeSwitched",
+         r"(invoke-super \{p0\}, Lcom/android/quickstep/inputconsumers/DelegateInputConsumer;"
+         r"->onConsumerAboutToBeSwitched\(\)V\n)",
+         r"\1\n    invoke-direct {p0}, " + consumer + r"->cleanupAfterMotionEvent()V\n", 1)
 
 
 def run(cmd, *args):
