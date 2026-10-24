@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
-"""Patch Pixel Launcher (tablet) for TB710FU. Each patch is located by its exact
-instruction bytes (not a fixed offset) and the build fails if it is not found.
+"""Patch Pixel Launcher (tablet) for TB710FU.
+
+classes.dex is disassembled with baksmali, edited, and reassembled with smali;
+the TaskbarQsbHider helper is added as an extra dex. Every edit must match
+exactly the expected number of times, otherwise the build fails (e.g. after a
+Pixel Launcher update), instead of silently shipping an unpatched launcher.
 
 1. Swipe-home dock alignment. TaskbarLauncherStateController
    .onIconAlignmentRatioChanged (with TaskbarViewController
@@ -8,124 +12,100 @@ instruction bytes (not a fixed offset) and the build fails if it is not found.
    as taskbarDp.getTaskbarOffsetY(). The taskbar DeviceProfile carries the 57dp
    taskbar icon size, so with the 66dp hotseat icons of the responsive grid the
    dock lands 19px low and snaps up when the real hotseat takes over. Call it on
-   the launcher DeviceProfile instead (v13 -> v11), which yields
-   barBottomSpace + hotseatIcon/2 - taskbarHeight/2: the hotseat icon centre for
-   any icon size.
+   the launcher DeviceProfile (v11) instead of the taskbar one (v13), which
+   yields barBottomSpace + hotseatIcon/2 - taskbarHeight/2: the hotseat icon
+   centre for any icon size.
 
-2. Search bar return animation. Swiping home from an app launched from the
-   hotseat search bar (OseWidgetView, an app widget) runs
-   LauncherSwipeHandlerV2.createWidgetHomeAnimationFactory, which flies a copy
-   of the widget (FloatingWidgetView) into place while the taskbar already shows
-   its own search bar there, so the bar is drawn twice for ~0.35 s. Treat the
-   search bar like a translucent target (floatingWidgetAlpha 0): the closing
-   window shrinks and fades into the bar. Other widgets keep the flying copy.
-     before: floatingWidgetAlpha = isTargetTranslucent ? 0f : 1f
-     after:  floatingWidgetAlpha = (isTargetTranslucent || hostView instanceof
-                                    OseWidgetView) ? 0f : 1f
-   The 8 code units are rewritten in place, so nothing else moves.
+2. Search bar return/launch animation. FloatingWidgetView flies a copy of the
+   hotseat search bar widget into place while the taskbar shows its own search
+   bar there, so the bar was drawn twice (home swipe, back gesture). Its
+   setUpdatesDeferred(true/false) calls mark the start and end of the
+   animation; route them through TaskbarQsbHider, which hides the taskbar
+   search bar meanwhile, like the launcher already does for app icons.
 
-usage: patch_launcher.py <in.apk> <out-unsigned.apk>
+usage: patch_launcher.py --baksmali CMD --smali CMD --helper-dex-zip ZIP <in.apk> <out.apk>
 """
-import hashlib
-import struct
-import sys
+import argparse
+import os
+import re
+import shlex
+import subprocess
+import tempfile
 import zipfile
-import zlib
+
+HOST_VIEW = "Lcom/android/launcher3/widget/LauncherAppWidgetHostView;"
+HIDER = "Lcom/android/launcher3/tb710fu/TaskbarQsbHider;"
 
 
-def u32(b, o):
-    return struct.unpack_from("<I", b, o)[0]
+def edit(root, cls, method, pattern, repl, count):
+    p = os.path.join(root, *cls.split("/")) + ".smali"
+    src = open(p).read()
+    # " name(" so that "init" does not match the "<init>" constructors
+    m = re.search(r"(\.method [^\n]* %s\(.*?\n)(.*?)(\n\.end method)" % re.escape(method), src, re.S)
+    if not m:
+        raise SystemExit(f"{cls}.{method}: method not found")
+    body, n = re.subn(pattern, repl, m.group(2))
+    if n != count:
+        raise SystemExit(f"{cls}.{method}: expected {count} match(es), found {n}")
+    open(p, "w").write(src[:m.start(2)] + body + src[m.end(2):])
+    print(f"{cls}.{method}: {n} edit(s)")
 
 
-class Dex:
-    def __init__(self, data):
-        self.d = data
-        self.string_ids_off = u32(data, 0x3C)
-        self.type_ids_size, self.type_ids_off = u32(data, 0x40), u32(data, 0x44)
-        self.method_ids_size, self.method_ids_off = u32(data, 0x58), u32(data, 0x5C)
+def patch_smali(root):
+    # 1. dock alignment
+    edit(root, "com/android/launcher3/taskbar/TaskbarLauncherStateController",
+         "onIconAlignmentRatioChanged",
+         r"invoke-virtual \{v13\}, Lcom/android/launcher3/DeviceProfile;->getTaskbarOffsetY\(\)I"
+         r"(\s+move-result v5)",
+         r"invoke-virtual {v11}, Lcom/android/launcher3/DeviceProfile;->getTaskbarOffsetY()I\1", 1)
 
-    def string(self, i):
-        off = u32(self.d, self.string_ids_off + 4 * i)
-        while self.d[off] & 0x80:  # skip uleb128 length
-            off += 1
-        off += 1
-        return bytes(self.d[off:self.d.index(b"\0", off)]).decode("utf-8", "replace")
-
-    def type_name(self, i):
-        return self.string(u32(self.d, self.type_ids_off + 4 * i))
-
-    def type_index(self, name):
-        found = [i for i in range(self.type_ids_size) if self.type_name(i) == name]
-        if len(found) != 1:
-            raise SystemExit(f"type {name} not unique: {found}")
-        return found[0]
-
-    def method_index(self, cls, name):
-        found = []
-        for m in range(self.method_ids_size):
-            class_idx, _proto, name_idx = struct.unpack_from("<HHI", self.d, self.method_ids_off + 8 * m)
-            if self.string(name_idx) == name and self.type_name(class_idx) == cls:
-                found.append(m)
-        if len(found) != 1:
-            raise SystemExit(f"method {cls}->{name} not unique: {found}")
-        return found[0]
+    # 2. hide the taskbar search bar during the floating widget animation
+    call = (r"invoke-virtual \{([vp]\d+), ([vp]\d+)\}, "
+            + re.escape(HOST_VIEW) + r"->setUpdatesDeferred\(Z\)V")
+    hider = (r"invoke-static {\1, \2}, " + HIDER
+             + "->setUpdatesDeferred(" + HOST_VIEW + "Z)V")
+    for method in ("init", "finish"):
+        edit(root, "com/android/quickstep/views/FloatingWidgetView", method, call, hider, 1)
 
 
-def find_once(dex, needle, what):
-    hits, start = [], 0
-    while (i := dex.find(needle, start)) >= 0:
-        hits.append(i)
-        start = i + 1
-    if len(hits) != 1:
-        raise SystemExit(f"{what}: expected exactly one match, found {len(hits)}")
-    return hits[0]
-
-
-def patch_dex(data):
-    dex = bytearray(data)
-    info = Dex(dex)
-
-    # 1. invoke-virtual {v13}, DeviceProfile.getTaskbarOffsetY() ; move-result v5
-    idx = info.method_index("Lcom/android/launcher3/DeviceProfile;", "getTaskbarOffsetY")
-    needle = bytes([0x6E, 0x10]) + struct.pack("<H", idx) + bytes([0x0D, 0x00, 0x0A, 0x05])
-    site = find_once(dex, needle, "dock alignment call site")
-    dex[site + 4] = 0x0B  # v13 (taskbar DeviceProfile) -> v11 (launcher DeviceProfile)
-    print(f"dock alignment: patched at 0x{site:x}")
-
-    # 2. createWidgetHomeAnimationFactory prologue (v12 hostView, v13 isTargetTranslucent,
-    #    v10 floatingWidgetAlpha):
-    #    if-eqz v13, +5 ; const/4 v0, 0 ; move v10, v0 ; goto +4 ;
-    #    const/high16 v0, 1.0f ; goto -4
-    old = bytes.fromhex("380d0500 1200 010a 2804 1500803f 28fc".replace(" ", ""))
-    site = find_once(dex, old, "widget return alpha prologue")
-    ose = info.type_index("Lcom/android/launcher3/qsb/OseWidgetView;")
-    new = (bytes([0x20, 0xCA]) + struct.pack("<H", ose)  # instance-of v10, v12, OseWidgetView
-           + bytes([0xB6, 0xDA])                        # or-int/2addr v10, v13
-           + bytes([0xDF, 0x0A, 0x0A, 0x01])            # xor-int/lit8 v10, v10, #1
-           + bytes([0x82, 0xAA])                        # int-to-float v10, v10
-           + bytes([0x00, 0x00, 0x00, 0x00]))           # nop ; nop
-    assert len(new) == len(old)
-    dex[site:site + len(old)] = new
-    print(f"search bar return: patched at 0x{site:x}")
-
-    # fix SHA-1 signature and Adler-32 checksum in the header
-    dex[12:32] = hashlib.sha1(dex[32:]).digest()
-    struct.pack_into("<I", dex, 8, zlib.adler32(bytes(dex[12:])) & 0xFFFFFFFF)
-    return bytes(dex)
+def run(cmd, *args):
+    subprocess.run(shlex.split(cmd) + list(args), check=True)
 
 
 def main():
-    src, out = sys.argv[1], sys.argv[2]
-    with zipfile.ZipFile(src) as zin, zipfile.ZipFile(out, "w") as zout:
-        for info in zin.infolist():
-            name = info.filename.split("/")[-1].upper()
-            if info.filename.startswith("META-INF/") and name.endswith(
-                    (".SF", ".RSA", ".EC", ".DSA", "MANIFEST.MF")):
-                continue  # old signature
-            data = zin.read(info.filename)
-            if info.filename == "classes.dex":
-                data = patch_dex(data)
-            zout.writestr(info, data, compress_type=info.compress_type)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--baksmali", required=True)
+    ap.add_argument("--smali", required=True)
+    ap.add_argument("--helper-dex-zip", required=True)
+    ap.add_argument("src")
+    ap.add_argument("out")
+    args = ap.parse_args()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with zipfile.ZipFile(args.src) as z:
+            open(os.path.join(tmp, "classes.dex"), "wb").write(z.read("classes.dex"))
+            dex_count = sum(1 for n in z.namelist() if re.fullmatch(r"classes\d*\.dex", n))
+        smali_dir = os.path.join(tmp, "smali")
+        run(args.baksmali, "d", os.path.join(tmp, "classes.dex"), "-o", smali_dir)
+        patch_smali(smali_dir)
+        new_dex = os.path.join(tmp, "classes.new.dex")
+        run(args.smali, "a", smali_dir, "-o", new_dex, "--api", "35")
+        with zipfile.ZipFile(args.helper_dex_zip) as hz:
+            helper = hz.read("classes.dex")
+        helper_name = f"classes{dex_count + 1}.dex"
+
+        with zipfile.ZipFile(args.src) as zin, zipfile.ZipFile(args.out, "w") as zout:
+            for info in zin.infolist():
+                base = info.filename.split("/")[-1].upper()
+                if info.filename.startswith("META-INF/") and base.endswith(
+                        (".SF", ".RSA", ".EC", ".DSA", "MANIFEST.MF")):
+                    continue  # old signature; android_app_import re-signs
+                data = open(new_dex, "rb").read() if info.filename == "classes.dex" \
+                    else zin.read(info.filename)
+                zout.writestr(info, data, compress_type=info.compress_type)
+            zout.writestr(zipfile.ZipInfo(helper_name, date_time=(2008, 1, 1, 0, 0, 0)), helper,
+                          compress_type=zipfile.ZIP_DEFLATED)
+        print(f"added {helper_name} (TaskbarQsbHider)")
 
 
 if __name__ == "__main__":

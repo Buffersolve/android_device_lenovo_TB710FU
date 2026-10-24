@@ -5,15 +5,32 @@
 // Pixel Launcher (tablet) with two swipe-home fixes (see patch_launcher.py):
 // the taskbar Y offset of the icon alignment animation is computed on the
 // launcher DeviceProfile, so the dock lands exactly on the hotseat with the
-// stock 66dp grid icons, and returning from Google search no longer flies a
-// second search bar over the taskbar one. The prebuilt
-// comes from vendor/pixel/launcher; the patched APK is re-signed with the
-// platform key, which Google app / Discover and At a Glance accept. Listed in
+// stock 66dp grid icons, and the taskbar search bar is hidden while the
+// hotseat search bar widget flies into place (TaskbarQsbHider), so it is not
+// drawn twice when returning from Google search. classes.dex is edited with
+// baksmali/smali from external/google-smali. The prebuilt comes from
+// vendor/pixel/launcher; the patched APK is re-signed with the platform key,
+// which Google app (Discover) and At a Glance accept. Listed in
 // PRODUCT_SOONG_NAMESPACES in device.mk.
 //
 
 soong_namespace {
     imports: ["vendor/pixel/launcher/common"],
+}
+
+java_library {
+    name: "TB710FUTaskbarQsbHiderStubs",
+    srcs: ["stubs/**/*.java"],
+    sdk_version: "current",
+    installable: false,
+}
+
+java_library {
+    name: "TB710FUTaskbarQsbHider",
+    srcs: ["src/**/*.java"],
+    libs: ["TB710FUTaskbarQsbHiderStubs"],
+    sdk_version: "current",
+    installable: false,
 }
 
 python_binary_host {
@@ -24,10 +41,23 @@ python_binary_host {
 
 java_genrule {
     name: "NexusLauncherReleaseTablet-patched-apk",
-    srcs: [":NexusLauncherReleaseTablet"],
-    tools: ["tb710fu_patch_launcher"],
+    srcs: [
+        ":NexusLauncherReleaseTablet",
+        ":TB710FUTaskbarQsbHider",
+    ],
+    tools: [
+        "android-smali",
+        "d8",
+        "smali-baksmali",
+        "tb710fu_patch_launcher",
+    ],
     out: ["NexusLauncherReleaseTablet.apk"],
-    cmd: "$(location tb710fu_patch_launcher) $(in) $(out)",
+    cmd: "$(location d8) --release --min-api 35 " +
+        "--output $(genDir)/helper.zip $(location :TB710FUTaskbarQsbHider) && " +
+        "$(location tb710fu_patch_launcher) " +
+        "--baksmali $(location smali-baksmali) --smali $(location android-smali) " +
+        "--helper-dex-zip $(genDir)/helper.zip " +
+        "$(location :NexusLauncherReleaseTablet) $(out)",
 }
 
 android_app_import {
