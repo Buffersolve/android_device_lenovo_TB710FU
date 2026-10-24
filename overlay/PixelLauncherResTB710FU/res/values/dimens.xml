@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Match the hotseat icon size of the responsive grid (66dp in both
+         orientations at 1280x800dp). DeviceProfile.getTaskbarOffsetY() aligns
+         the taskbar with the hotseat using the taskbar icon size, so with the
+         default 57dp the dock is drawn 19px too low during the swipe-home
+         animation and snaps up when the real hotseat takes over. -->
+    <dimen name="transient_taskbar_icon_size">66dp</dimen>
+</resources>
