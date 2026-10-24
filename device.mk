@@ -148,6 +148,10 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     TB710FUParts
 
+# Pixel Launcher with the swipe-home dock alignment fixed (lenovo/NexusLauncher)
+PRODUCT_PACKAGES += \
+    NexusLauncherReleaseTabletPatched
+
 # Lenovo pen / keyboard / battery bridge (input/)
 PRODUCT_PACKAGES += \
     PenService \
@@ -294,7 +298,6 @@ PRODUCT_PACKAGES += \
     SettingsProviderResTB710FU \
     SettingsResTB710FU \
     SystemUIResTB710FU \
-    PixelLauncherResTB710FU \
     UpdaterResTB710FU \
     WifiResTB710FU \
     ZuiUDeviceResTB710FU
@@ -370,6 +373,7 @@ PRODUCT_SHIPPING_API_LEVEL := $(BOARD_SHIPPING_API_LEVEL)
 PRODUCT_SOONG_NAMESPACES += \
     device/lenovo/TB710FU \
     device/lenovo/TB710FU/lenovo/KeyboardUpdate \
+    device/lenovo/TB710FU/lenovo/NexusLauncher \
     device/lenovo/TB710FU/lenovo/PenService
 
 # Storage

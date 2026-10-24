@@ -1,0 +1,48 @@
+//
+// SPDX-FileCopyrightText: 2026 The LineageOS Project
+// SPDX-License-Identifier: Apache-2.0
+//
+// Pixel Launcher (tablet) with the swipe-home dock alignment fixed: the taskbar
+// Y offset of the icon alignment animation is computed on the launcher
+// DeviceProfile instead of the taskbar one, so the dock lands exactly on the
+// hotseat with the stock 66dp grid icons (see patch_launcher.py). The prebuilt
+// comes from vendor/pixel/launcher; the patched APK is re-signed with the
+// platform key, which Google app / Discover and At a Glance accept. Listed in
+// PRODUCT_SOONG_NAMESPACES in device.mk.
+//
+
+soong_namespace {
+    imports: ["vendor/pixel/launcher/common"],
+}
+
+python_binary_host {
+    name: "tb710fu_patch_launcher",
+    main: "patch_launcher.py",
+    srcs: ["patch_launcher.py"],
+}
+
+java_genrule {
+    name: "NexusLauncherReleaseTablet-patched-apk",
+    srcs: [":NexusLauncherReleaseTablet"],
+    tools: ["tb710fu_patch_launcher"],
+    out: ["NexusLauncherReleaseTablet.apk"],
+    cmd: "$(location tb710fu_patch_launcher) $(in) $(out)",
+}
+
+android_app_import {
+    name: "NexusLauncherReleaseTabletPatched",
+    apk: ":NexusLauncherReleaseTablet-patched-apk",
+    certificate: "platform",
+    overrides: [
+        "Launcher3",
+        "Launcher3QuickStep",
+        "TrebuchetQuickStep",
+        "NexusLauncherRelease",
+        "NexusLauncherReleaseTablet",
+    ],
+    dex_preopt: {
+        enabled: false,
+    },
+    privileged: true,
+    system_ext_specific: true,
+}
