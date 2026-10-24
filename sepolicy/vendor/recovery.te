@@ -1,0 +1,6 @@
+# libfs_mgr reads the f2fs feature flags (/sys/fs/f2fs/features/linear_lookup)
+# before formatting or mounting data. Without access recovery logs
+# "Failed to open /sys/fs/f2fs/features/linear_lookup: Permission denied" on
+# every install and format.
+allow recovery sysfs_fs_f2fs:dir search;
+allow recovery sysfs_fs_f2fs:file r_file_perms;
