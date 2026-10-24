@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Stock Lenovo PenService (pen settings, buttons, writing haptics UI, EasyJot)
-// with a small compat dex prepended: two helpers of the stock APK use ZUI /
+// with a small compat dex prepended: a few helpers of the stock APK use ZUI /
 // Android 14 framework classes that do not exist in Android 17 and would
 // crash the persistent process. The stock APK comes from the vendor tree
 // (proprietary-files.txt: EXTRACT_ONLY, FILEGROUP PenService-stock), hence the
