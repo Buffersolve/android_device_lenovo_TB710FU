@@ -236,6 +236,12 @@ vendor.display.enable_optimize_refresh=0
 vendor.display.use_smooth_motion=1
 vendor.display.disable_stc_dimming=1
 vendor.display.enable_dpps_dynamic_fps=1
+# The SDM idle fps switch drops the panel to its lowest mode (30 Hz, VFP
+# 26 -> 6806) about 90 ms after every frame and back up on the next one.
+# On this dual-DSI panel the VFP change makes half of the screen flicker,
+# most visibly at 144 Hz. SurfaceFlinger still lowers the rate itself
+# (idle timer and content detection).
+vendor.display.disable_idle_fps_switch=1
 debug.sf.disable_client_composition_cache=0
 debug.sf.enable_gl_backpressure=1
 debug.sf.enable_advanced_sf_phase_offset=1
