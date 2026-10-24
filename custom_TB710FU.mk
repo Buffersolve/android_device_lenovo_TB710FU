@@ -23,12 +23,14 @@ PRODUCT_CHARACTERISTICS := nosdcard,tablet
 
 PRODUCT_GMS_CLIENTID_BASE := android-lenovo
 
-# Report a Pixel release-keys build like Evolution X did on this tablet,
-# instead of custom_TB710FU/.../eng.<user>:user/test-keys. PropImitationHooks
-# still spoof the certified Pixel props for Play services per process.
+# Report the stock Lenovo release-keys build (ZUXOS 1.5.04.470 PRC, from the
+# stock system/product build.prop) instead of
+# custom_TB710FU/.../eng.<user>:user/test-keys. It names the model and firmware
+# only, nothing of a particular unit. PropImitationHooks still spoof the
+# certified Pixel props for Play services per process.
 PRODUCT_BUILD_PROP_OVERRIDES += \
-    BuildDesc="bluejay_beta-user CANARY ZP11.260918.007 16484274 release-keys" \
-    BuildFingerprint=google/bluejay_beta/bluejay:CANARY/ZP11.260918.007/16484274:user/release-keys \
+    BuildDesc="TB710FU-user 16 BP2A.250605.031.A3 1 release-keys" \
+    BuildFingerprint=Lenovo/TB710FU/TB710FU:16/BP2A.250605.031.A3/ZUXOS_1.5.04.470_260625_PRC:user/release-keys \
     DeviceName=TB710FU \
     DeviceProduct=TB710FU \
     SystemDevice=TB710FU \
