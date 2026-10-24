@@ -46,3 +46,9 @@ persist.sys.sf.native_mode=2
 # placement, docked bottom-right with a clipped height, instead of the centred
 # tablet dialogs. Only this key, not the rest of ro.config.lgsi.* (vendor.prop).
 ro.config.lgsi.device.type=pad
+
+# Qualcomm secure time services (time_daemon, the QSEE time listener in
+# qseecomd) log every secure time request at debug level, ~140 lines when
+# time_daemon starts. Keep their info/warning/error lines only.
+log.tag.DrmLibTime=I
+log.tag.QC-time-services=I
