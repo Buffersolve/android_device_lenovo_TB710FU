@@ -58,8 +58,8 @@ class DolbyNotificationListener : NotificationListenerService() {
     private fun initializeDolbySettings() {
         try {
             val prefs = getSharedPreferences("dolby_prefs", MODE_PRIVATE)
-            val savedProfile = prefs.getString(DolbyConstants.PREF_PROFILE, "0")?.toIntOrNull() ?: 0
-            val enabled = prefs.getBoolean(DolbyConstants.PREF_ENABLE, false)
+            val savedProfile = prefs.getString(DolbyConstants.PREF_PROFILE, DolbyConstants.DEFAULT_PROFILE.toString())?.toIntOrNull() ?: 0
+            val enabled = prefs.getBoolean(DolbyConstants.PREF_ENABLE, DolbyConstants.DEFAULT_ENABLED)
             DolbyConstants.dlog(TAG, "Initializing Dolby - enabled: $enabled, profile: $savedProfile")
             if (enabled) {
                 dolbyRepository.setCurrentProfile(savedProfile)
@@ -95,6 +95,7 @@ class DolbyNotificationListener : NotificationListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        dolbyRepository.close()
         DolbyConstants.dlog(TAG, "NotificationListener destroyed")
     }
 

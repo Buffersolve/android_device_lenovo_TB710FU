@@ -56,13 +56,10 @@ class SummaryProvider : ContentProvider() {
 
     private fun getDolbySummary(): String {
         val context = context ?: return ""
-        val repository = DolbyRepository(context)
-        
-        if (!repository.getDolbyEnabled()) {
-            return context.getString(R.string.dolby_off)
-        }
-        
-        val profile = repository.getCurrentProfile()
+        // Close the repository so its reference on the shared effect does not leak.
+        val profile = DolbyRepository(context).use {
+            if (it.getDolbyEnabled()) it.getCurrentProfile() else null
+        } ?: return context.getString(R.string.dolby_off)
         val profiles = context.resources.getStringArray(R.array.dolby_profile_entries)
         val profileValues = context.resources.getStringArray(R.array.dolby_profile_values)
         

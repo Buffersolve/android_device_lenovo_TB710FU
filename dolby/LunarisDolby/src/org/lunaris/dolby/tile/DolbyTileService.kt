@@ -13,7 +13,16 @@ import org.lunaris.dolby.data.DolbyRepository
 
 class DolbyTileService : TileService() {
 
-    private val repository by lazy { DolbyRepository(applicationContext) }
+    private var repositoryOrNull: DolbyRepository? = null
+    private val repository: DolbyRepository
+        get() = repositoryOrNull ?: DolbyRepository(applicationContext).also { repositoryOrNull = it }
+
+    override fun onDestroy() {
+        // Release the reference on the shared effect when the tile is unbound.
+        repositoryOrNull?.close()
+        repositoryOrNull = null
+        super.onDestroy()
+    }
 
     override fun onStartListening() {
         super.onStartListening()

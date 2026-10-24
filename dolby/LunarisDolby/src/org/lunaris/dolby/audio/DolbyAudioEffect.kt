@@ -47,11 +47,7 @@ class DolbyAudioEffect(priority: Int, audioSession: Int) : AudioEffect(
 
     fun resetProfileSpecificSettings(profile: Int = this.profile) {
         DolbyConstants.dlog(TAG, "resetProfileSpecificSettings: profile=$profile")
-        try {
-            setIntParam(EFFECT_PARAM_RESET_PROFILE_SETTINGS, profile)
-        } catch (e: RuntimeException) {
-            DolbyConstants.dlog(TAG, "resetProfileSpecificSettings failed: ${e.message}")
-        }
+        setIntParam(EFFECT_PARAM_RESET_PROFILE_SETTINGS, profile)
     }
 
     fun setDapParameter(param: DsParam, values: IntArray, profile: Int = this.profile) {

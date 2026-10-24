@@ -53,6 +53,7 @@
     <string name="dolby_profile_video">Film/Video</string>
     <string name="dolby_profile_music">Müzik</string>
     <string name="dolby_profile_game">Oyun</string>
+    <string name="dolby_profile_voice">Ses</string>
     <string name="dolby_profile_work">İş</string>
     <string name="dolby_profile_casual">Günlük</string>
     <string name="dolby_profile_mood">Ruh hali</string>

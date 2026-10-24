@@ -11,6 +11,7 @@
 
     <!-- Dialogue enhancer amount -->
     <integer name="dialogue_enhancer_min">1</integer>
-    <integer name="dialogue_enhancer_max">12</integer>
+    <!-- TB520FU: 0-16 like the stock Lenovo slider (stock defaults 4 and 8) -->
+    <integer name="dialogue_enhancer_max">16</integer>
 
 </resources>

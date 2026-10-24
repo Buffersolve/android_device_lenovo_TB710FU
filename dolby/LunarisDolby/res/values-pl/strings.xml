@@ -54,6 +54,7 @@
     <string name="dolby_profile_video">Film/Wideo</string>
     <string name="dolby_profile_music">Muzyka</string>
     <string name="dolby_profile_game">Gra</string>
+    <string name="dolby_profile_voice">Głos</string>
     <string name="dolby_profile_work">Praca</string>
     <string name="dolby_profile_casual">Codzienny</string>
     <string name="dolby_profile_mood">Nastrój</string>

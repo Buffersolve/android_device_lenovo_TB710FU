@@ -8,6 +8,7 @@ package org.lunaris.dolby.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -32,15 +33,44 @@ class DolbyEffectService : Service() {
     private lateinit var repository: DolbyRepository
     private lateinit var deviceStateManager: DeviceStateManager
     private var previousActiveDevice: AudioDeviceInfo? = null
+    private var applyRetryAttempt = 0
+    private var applyRetryPending = false
+    private var destroyed = false
+    private val applyRetry = Runnable {
+        applyRetryPending = false
+        applySavedStateOrRetry()
+    }
+
+    private fun cancelApplyRetry() {
+        handler.removeCallbacks(applyRetry)
+        applyRetryPending = false
+        applyRetryAttempt = 0
+    }
+
+    private fun applySavedStateOrRetry() {
+        if (destroyed) return
+        if (repository.applySavedState()) {
+            cancelApplyRetry()
+        } else if (!applyRetryPending) {
+            if (applyRetryAttempt < APPLY_RETRY_DELAYS.size) {
+                val delay = APPLY_RETRY_DELAYS[applyRetryAttempt++]
+                applyRetryPending = true
+                handler.postDelayed(applyRetry, delay)
+            } else {
+                Log.w(TAG, "Saved state restore retries exhausted")
+                applyRetryAttempt = 0
+            }
+        }
+    }
 
     private val audioDeviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
-            Log.d(TAG, "Devices added: ${addedDevices.map { it.productName }}")
+            Log.d(TAG, "Devices added: ${addedDevices.map { it.debugString() }}")
             handleDeviceChange()
         }
 
         override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
-            Log.d(TAG, "Devices removed: ${removedDevices.map { it.productName }}")
+            Log.d(TAG, "Devices removed: ${removedDevices.map { it.debugString() }}")
             if (isDeviceStateMemoryEnabled) {
                 removedDevices.forEach { device ->
                     val key = deviceStateManager.deviceKey(device)
@@ -56,7 +86,7 @@ class DolbyEffectService : Service() {
         override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>?) {
             val isActive = configs?.any { it.isActive } == true
             if (isActive) {
-                repository.applySavedState()
+                applySavedStateOrRetry()
             }
         }
     }
@@ -71,12 +101,12 @@ class DolbyEffectService : Service() {
             if (isDeviceStateMemoryEnabled) {
                 val key = deviceStateManager.deviceKey(currentDevice)
                 val restored = deviceStateManager.restoreSnapshot(key, repository)
-                if (!restored) repository.applySavedState()
+                if (!restored) applySavedStateOrRetry()
             } else {
-                repository.applySavedState()
+                applySavedStateOrRetry()
             }
         } else {
-            repository.applySavedState()
+            applySavedStateOrRetry()
         }
 
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, handler)
@@ -103,50 +133,62 @@ class DolbyEffectService : Service() {
                 val restored = deviceStateManager.restoreSnapshot(newKey, repository)
                 if (!restored) {
                     Log.d(TAG, "First time device, applying saved state as base")
-                    repository.applySavedState()
+                    applySavedStateOrRetry()
                 }
             } else {
                 Log.d(TAG, "Device state memory disabled, applying saved state")
-                repository.applySavedState()
+                applySavedStateOrRetry()
             }
             previousActiveDevice = newDevice
         } else {
             repository.updateSpeakerState()
-            repository.applySavedState()
+            applySavedStateOrRetry()
             previousActiveDevice = null
         }
     }
 
     private fun getCurrentOutputDevice(): AudioDeviceInfo? {
-        val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        val routedDevice = try {
+            audioManager
+                .getDevicesForAttributes(ATTRIBUTES_MEDIA)
+                .firstOrNull()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to get active media route", e)
+            null
+        } ?: return null
 
-        val priorityOrder = listOf(
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-            AudioDeviceInfo.TYPE_BLE_HEADSET,
-            AudioDeviceInfo.TYPE_BLE_SPEAKER,
-            AudioDeviceInfo.TYPE_BLE_BROADCAST,
-            AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
-            AudioDeviceInfo.TYPE_WIRED_HEADSET,
-            AudioDeviceInfo.TYPE_USB_HEADSET,
-            AudioDeviceInfo.TYPE_USB_DEVICE,
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-        )
+        val outputs = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        val routedAddress = routedDevice.address.orEmpty()
 
-        for (type in priorityOrder) {
-            val device = devices.firstOrNull { it.type == type }
-            if (device != null) return device
+        return outputs.firstOrNull { device ->
+            device.isSink &&
+                device.type == routedDevice.type &&
+                (routedAddress.isEmpty() || device.address == routedAddress)
+        } ?: outputs.firstOrNull { device ->
+            device.isSink && device.type == routedDevice.type
+        }.also { device ->
+            if (device == null) {
+                Log.w(
+                    TAG,
+                    "Unable to map active media route: " +
+                        "type=${routedDevice.type}, address=${routedDevice.address}"
+                )
+            }
         }
-        return devices.firstOrNull()
     }
 
+    private fun AudioDeviceInfo.debugString(): String =
+        "name=$productName,type=$type,id=$id,address=$address,isSink=$isSink"
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        repository.applySavedState()
+        applySavedStateOrRetry()
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        destroyed = true
+        cancelApplyRetry()
         if (isDeviceStateMemoryEnabled) {
             previousActiveDevice?.let { device ->
                 val key = deviceStateManager.deviceKey(device)
@@ -156,6 +198,7 @@ class DolbyEffectService : Service() {
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         audioManager.unregisterAudioPlaybackCallback(playbackCallback)
         handler.removeCallbacksAndMessages(null)
+        repository.close()
         Log.d(TAG, "Dolby effect service destroyed")
     }
 
@@ -163,6 +206,12 @@ class DolbyEffectService : Service() {
 
     companion object {
         private const val TAG = "DolbyEffectService"
+        private val APPLY_RETRY_DELAYS = longArrayOf(200, 500, 1000, 2000)
+
+        private val ATTRIBUTES_MEDIA = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
 
         fun start(context: Context) {
             val intent = Intent(context, DolbyEffectService::class.java)

@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,10 +33,6 @@ fun ModernAdvancedSettingsScreen(
     navController: NavController
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currentRoute by navController.currentBackStackEntryFlow.collectAsState(null)
-    
-    val layoutDirection = LocalLayoutDirection.current
-    val cutoutInsets = WindowInsets.displayCutout.asPaddingValues()
 
     Scaffold(
         topBar = {
@@ -46,7 +41,7 @@ fun ModernAdvancedSettingsScreen(
                     Text(
                         stringResource(R.string.dolby_category_adv_settings),
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     ) 
                 },
@@ -103,46 +98,6 @@ fun ModernAdvancedSettingsScreen(
                 }
             }
         }
-            
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(130.dp)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f)
-                            )
-                        )
-                    )
-            )
-            
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(
-                        start = cutoutInsets.calculateStartPadding(layoutDirection),
-                        end = cutoutInsets.calculateEndPadding(layoutDirection),
-                        bottom = paddingValues.calculateBottomPadding()
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                FloatingNavToolbar(
-                    currentRoute = currentRoute?.destination?.route ?: "settings",
-                    onNavigate = { route ->
-                        if (currentRoute?.destination?.route != route) {
-                            navController.navigate(route) {
-                                popUpTo("settings") { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    }
-                )
-            }
         }
     }
 }
@@ -350,38 +305,13 @@ private fun ModernAdvancedSettingsContent(
                     }
                 }
             }
-        } else if (state.settings.currentProfile == 0 && state.settings.enabled) {
+        } else {
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(R.string.dolby_adv_settings_footer),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-        } else if (!state.settings.enabled) {
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.large,
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),

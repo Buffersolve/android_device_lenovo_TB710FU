@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp as lerpColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -53,22 +54,16 @@ fun ProfileCarousel(
         0 to Icons.Default.AutoAwesome,
         1 to Icons.Default.Movie,
         2 to Icons.Default.MusicNote,
-        3 to Icons.Default.SportsEsports,
+        // TB520FU DAX profiles: 3 is Voice, 8 is Game (dolby_profile_values)
+        3 to Icons.Default.RecordVoiceOver,
+        8 to Icons.Default.SportsEsports,
         4 to Icons.Default.Work,
         5 to Icons.Default.Coffee,
         6 to Icons.Default.Favorite
     )
     
-    val profileGradients = listOf(
-        listOf(Color(0xFF667eea), Color(0xFF764ba2)),
-        listOf(Color(0xFFf093fb), Color(0xFFf5576c)),
-        listOf(Color(0xFF4facfe), Color(0xFF00f2fe)),
-        listOf(Color(0xFFfa709a), Color(0xFFfee140)),
-        listOf(Color(0xFF30cfd0), Color(0xFF330867)),
-        listOf(Color(0xFFff9a56), Color(0xFFff6a88)),
-        listOf(Color(0xFFa18cd1), Color(0xFFfbc2eb))
-    )
-    
+    val profilePalettes = rememberProfilePalettes()
+
     val initialPage = profileValues.indexOfFirst { it.toInt() == currentProfile }.coerceAtLeast(0)
     val pagerState = rememberPagerState(
         initialPage = initialPage,
@@ -79,7 +74,7 @@ fun ProfileCarousel(
     
     LaunchedEffect(pagerState.currentPage) {
         if (pagerState.currentPage != lastPage) {
-            haptic.performHaptic(HapticFeedbackHelper.HapticIntensity.DOUBLE_CLICK)
+            haptic.performHaptic(HapticFeedbackHelper.HapticIntensity.CLICK)
             lastPage = pagerState.currentPage
             
             if (pagerState.currentPage != initialPage) {
@@ -93,7 +88,7 @@ fun ProfileCarousel(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceBright
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         )
     ) {
         Column(
@@ -103,7 +98,7 @@ fun ProfileCarousel(
             Text(
                 text = stringResource(R.string.dolby_profile_title),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
@@ -122,12 +117,12 @@ fun ProfileCarousel(
                 ProfileCard(
                     profile = profiles[page],
                     icon = profileIcons[profileValue] ?: Icons.Default.Tune,
-                    gradient = profileGradients.getOrElse(profileValue) { profileGradients[0] },
+                    palette = profilePalettes.getOrElse(profileValue) { profilePalettes[0] },
                     isSelected = page == pagerState.currentPage,
                     pageOffset = pageOffset,
                     onClick = {
                         scope.launch {
-                            haptic.performHaptic(HapticFeedbackHelper.HapticIntensity.DOUBLE_CLICK)
+                            haptic.performHaptic(HapticFeedbackHelper.HapticIntensity.CLICK)
                             pagerState.animateScrollToPage(page)
                         }
                     }
@@ -158,7 +153,7 @@ fun ProfileCarousel(
                                 if (isSelected)
                                     MaterialTheme.colorScheme.primary
                                 else
-                                    MaterialTheme.colorScheme.surfaceVariant
+                                    MaterialTheme.colorScheme.outlineVariant
                             )
                     )
                 }
@@ -167,12 +162,41 @@ fun ProfileCarousel(
     }
 }
 
+/**
+ * A profile's colour pair, derived entirely from the active Material 3 scheme so
+ * the carousel follows dynamic colour instead of fixed brand gradients.
+ */
+internal data class ProfilePalette(
+    val start: Color,
+    val end: Color,
+    val content: Color
+)
+
+@Composable
+private fun rememberProfilePalettes(): List<ProfilePalette> {
+    val scheme = MaterialTheme.colorScheme
+    return remember(scheme) {
+        listOf(
+            ProfilePalette(scheme.primary, blend(scheme.primary, scheme.secondary, 0.35f), scheme.onPrimary),
+            ProfilePalette(scheme.primary, blend(scheme.primary, scheme.tertiary, 0.55f), scheme.onPrimary),
+            ProfilePalette(scheme.tertiary, blend(scheme.tertiary, scheme.primary, 0.35f), scheme.onTertiary),
+            ProfilePalette(scheme.tertiary, blend(scheme.tertiary, scheme.secondary, 0.55f), scheme.onTertiary),
+            ProfilePalette(scheme.secondary, blend(scheme.secondary, scheme.primary, 0.45f), scheme.onSecondary),
+            ProfilePalette(scheme.secondary, blend(scheme.secondary, scheme.tertiary, 0.55f), scheme.onSecondary),
+            ProfilePalette(scheme.primary, blend(scheme.primary, scheme.tertiary, 0.3f), scheme.onPrimary)
+        )
+    }
+}
+
+private fun blend(from: Color, to: Color, fraction: Float): Color =
+    lerpColor(from, to, fraction)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ProfileCard(
     profile: String,
     icon: ImageVector,
-    gradient: List<Color>,
+    palette: ProfilePalette,
     isSelected: Boolean,
     pageOffset: Float,
     onClick: () -> Unit
@@ -199,8 +223,12 @@ private fun ProfileCard(
                 this.alpha = alpha
             },
         shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = palette.end,
+            contentColor = palette.content
+        ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 8.dp else 2.dp
+            defaultElevation = if (isSelected) 6.dp else 0.dp
         )
     ) {
         Box(
@@ -208,7 +236,7 @@ private fun ProfileCard(
                 .fillMaxSize()
                 .background(
                     brush = Brush.linearGradient(
-                        colors = gradient
+                        colors = listOf(palette.start, palette.end)
                     )
                 )
         ) {
@@ -230,13 +258,13 @@ private fun ProfileCard(
                         .size(56.dp)
                         .scale(iconScale),
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.3f)
+                    color = palette.content.copy(alpha = 0.22f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = palette.content,
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -247,18 +275,18 @@ private fun ProfileCard(
                 Text(
                     text = profile,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.content,
                     textAlign = TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 if (isSelected) {
                     Surface(
                         modifier = Modifier.height(2.dp).width(24.dp),
                         shape = CircleShape,
-                        color = Color.White
+                        color = palette.content
                     ) {}
                 }
             }
@@ -270,13 +298,13 @@ private fun ProfileCard(
                         .padding(10.dp)
                         .size(24.dp),
                     shape = CircleShape,
-                    color = Color.White
+                    color = palette.content
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Check,
                             contentDescription = "Selected",
-                            tint = gradient[0],
+                            tint = palette.start,
                             modifier = Modifier.size(16.dp)
                         )
                     }

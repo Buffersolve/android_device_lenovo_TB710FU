@@ -5,6 +5,7 @@
 
 package org.lunaris.dolby.ui.components
 
+import org.lunaris.dolby.DolbyConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -39,28 +39,31 @@ fun InteractiveFrequencyResponseCurve(
     isEditable: Boolean = true
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
-    val surfaceColor = MaterialTheme.colorScheme.surfaceVariant
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val onSurfaceVariantColor = MaterialTheme.colorScheme.onSurfaceVariant
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val primaryContainerColor = MaterialTheme.colorScheme.primaryContainer
+    val onPrimaryContainerColor = MaterialTheme.colorScheme.onPrimaryContainer
     val errorColor = MaterialTheme.colorScheme.error
     val surfaceContainerHighest = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    val plotInkColor = if (isActive) onPrimaryContainerColor else onSurfaceVariantColor
+    val curveColor = if (isActive) primaryColor else secondaryColor
     
     val backgroundColor = if (isActive) {
-        primaryContainerColor.copy(alpha = 0.4f)
+        primaryContainerColor
     } else {
-        surfaceContainerHighest.copy(alpha = 0.3f)
+        surfaceContainerHighest
     }
-    
+
     val borderColor = if (isActive) {
         primaryColor
     } else if (!isEditable) {
-        errorColor.copy(alpha = 0.5f)
+        errorColor
     } else {
-        Color.Transparent
+        MaterialTheme.colorScheme.outlineVariant
     }
     
-    val borderWidth = if (isActive) 2.dp else if (!isEditable) 1.dp else 0.dp
+    val borderWidth = if (isActive) 2.dp else 1.dp
     
     var draggedIndex by remember { mutableStateOf<Int?>(null) }
     var controlPoints by remember { mutableStateOf(bandGains.map { it.gain }) }
@@ -95,7 +98,7 @@ fun InteractiveFrequencyResponseCurve(
                                 
                                 bandGains.forEachIndexed { index, _ ->
                                     val x = index * stepX
-                                    val normalizedGain = (controlPoints[index] / 150f).coerceIn(-1f, 1f)
+                                    val normalizedGain = (controlPoints[index] / DolbyConstants.GEQ_MAX_GAIN.toFloat()).coerceIn(-1f, 1f)
                                     val y = height / 2 - (normalizedGain * height / 2 * 0.85f)
                                     
                                     val distance = kotlin.math.sqrt(
@@ -119,7 +122,7 @@ fun InteractiveFrequencyResponseCurve(
                                     val centerY = height / 2
                                     val y = change.position.y
                                     val normalizedGain = ((centerY - y) / (height / 2 * 0.85f)).coerceIn(-1f, 1f)
-                                    val newGain = (normalizedGain * 150).toInt().coerceIn(-150, 150)
+                                    val newGain = (normalizedGain * DolbyConstants.GEQ_MAX_GAIN).toInt().coerceIn(-DolbyConstants.GEQ_MAX_GAIN, DolbyConstants.GEQ_MAX_GAIN)
                                     
                                     if (controlPoints[index] != newGain) {
                                         controlPoints = controlPoints.toMutableList().apply {
@@ -145,34 +148,20 @@ fun InteractiveFrequencyResponseCurve(
             val width = size.width
             val height = size.height
             val centerY = height / 2
-            
-            val gridColor = if (isActive) {
-                surfaceColor.copy(alpha = 0.4f)
-            } else {
-                surfaceColor.copy(alpha = 0.3f)
-            }
-            
-            val gridVerticalColor = if (isActive) {
-                surfaceColor.copy(alpha = 0.3f)
-            } else {
-                surfaceColor.copy(alpha = 0.2f)
-            }
-            
+            val gridColor = plotInkColor.copy(alpha = 0.18f)
+            val gridVerticalColor = plotInkColor.copy(alpha = 0.12f)
+
             drawLine(
-                color = if (isActive) {
-                    surfaceColor.copy(alpha = 0.7f)
-                } else {
-                    surfaceColor.copy(alpha = 0.5f)
-                },
+                color = plotInkColor.copy(alpha = 0.5f),
                 start = Offset(0f, centerY),
                 end = Offset(width, centerY),
                 strokeWidth = 3f
             )
-            
+
             for (i in 1..4) {
                 val y = (height / 5) * i
                 drawLine(
-                    color = gridColor.copy(alpha = 0.3f),
+                    color = gridColor,
                     start = Offset(0f, y),
                     end = Offset(width, y),
                     strokeWidth = 1f
@@ -195,7 +184,7 @@ fun InteractiveFrequencyResponseCurve(
                 
                 controlPoints.forEachIndexed { index, gain ->
                     val x = index * stepX
-                    val normalizedGain = (gain / 150f).coerceIn(-1f, 1f)
+                    val normalizedGain = (gain / DolbyConstants.GEQ_MAX_GAIN.toFloat()).coerceIn(-1f, 1f)
                     val y = centerY - (normalizedGain * centerY * 0.85f)
                     
                     if (index == 0) {
@@ -203,7 +192,7 @@ fun InteractiveFrequencyResponseCurve(
                     } else {
                         val prevX = (index - 1) * stepX
                         val prevGain = controlPoints[index - 1]
-                        val prevNormalizedGain = (prevGain / 150f).coerceIn(-1f, 1f)
+                        val prevNormalizedGain = (prevGain / DolbyConstants.GEQ_MAX_GAIN.toFloat()).coerceIn(-1f, 1f)
                         val prevY = centerY - (prevNormalizedGain * centerY * 0.85f)
                         
                         val cpX1 = prevX + stepX * 0.4f
@@ -217,7 +206,7 @@ fun InteractiveFrequencyResponseCurve(
                 
                 drawPath(
                     path = path,
-                    color = if (isActive) primaryColor else primaryColor.copy(alpha = 0.8f),
+                    color = curveColor,
                     style = Stroke(width = if (isActive) 5f else 4f)
                 )
                 
@@ -231,23 +220,16 @@ fun InteractiveFrequencyResponseCurve(
                 drawPath(
                     path = fillPath,
                     brush = Brush.verticalGradient(
-                        colors = if (isActive) {
-                            listOf(
-                                primaryColor.copy(alpha = 0.4f),
-                                primaryColor.copy(alpha = 0.08f)
-                            )
-                        } else {
-                            listOf(
-                                primaryColor.copy(alpha = 0.3f),
-                                primaryColor.copy(alpha = 0.05f)
-                            )
-                        }
+                        colors = listOf(
+                            curveColor.copy(alpha = if (isActive) 0.4f else 0.28f),
+                            curveColor.copy(alpha = 0.04f)
+                        )
                     )
                 )
                 
                 controlPoints.forEachIndexed { index, gain ->
                     val x = index * stepX
-                    val normalizedGain = (gain / 150f).coerceIn(-1f, 1f)
+                    val normalizedGain = (gain / DolbyConstants.GEQ_MAX_GAIN.toFloat()).coerceIn(-1f, 1f)
                     val y = centerY - (normalizedGain * centerY * 0.85f)
                     
                     val isBeingDragged = draggedIndex == index
@@ -255,20 +237,20 @@ fun InteractiveFrequencyResponseCurve(
                     
                     if (isBeingDragged) {
                         drawCircle(
-                            color = primaryColor.copy(alpha = 0.3f),
+                            color = curveColor.copy(alpha = 0.3f),
                             radius = 24f,
                             center = Offset(x, y)
                         )
                     }
-                    
+
                     drawCircle(
-                        color = Color.White,
+                        color = backgroundColor,
                         radius = pointRadius,
                         center = Offset(x, y)
                     )
-                    
+
                     drawCircle(
-                        color = if (isActive) primaryColor else primaryColor.copy(alpha = 0.8f),
+                        color = curveColor,
                         radius = pointRadius - 2f,
                         center = Offset(x, y)
                     )
@@ -291,11 +273,7 @@ fun InteractiveFrequencyResponseCurve(
                         "${bandGain.frequency}"
                     },
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (isActive) {
-                        onSurfaceColor.copy(alpha = 0.8f)
-                    } else {
-                        onSurfaceColor.copy(alpha = 0.7f)
-                    },
+                    color = plotInkColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -311,11 +289,7 @@ fun InteractiveFrequencyResponseCurve(
             Text(
                 text = "+15",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isActive) {
-                    secondaryColor
-                } else {
-                    secondaryColor.copy(alpha = 0.8f)
-                },
+                color = plotInkColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(vertical = 12.dp)
@@ -323,11 +297,7 @@ fun InteractiveFrequencyResponseCurve(
             Text(
                 text = "0",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isActive) {
-                    secondaryColor
-                } else {
-                    secondaryColor.copy(alpha = 0.8f)
-                },
+                color = plotInkColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(vertical = 12.dp)
@@ -335,11 +305,7 @@ fun InteractiveFrequencyResponseCurve(
             Text(
                 text = "-15",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (isActive) {
-                    secondaryColor
-                } else {
-                    secondaryColor.copy(alpha = 0.8f)
-                },
+                color = plotInkColor,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(vertical = 12.dp)
@@ -348,7 +314,7 @@ fun InteractiveFrequencyResponseCurve(
         
         draggedIndex?.let { index ->
             val gain = controlPoints[index]
-            val gainDb = gain / 10f
+            val gainDb = gain / DolbyConstants.GEQ_UNITS_PER_DB
             
             Surface(
                 modifier = Modifier
@@ -362,7 +328,7 @@ fun InteractiveFrequencyResponseCurve(
                     text = "${if (gainDb >= 0) "+" else ""}%.1f dB".format(gainDb),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }

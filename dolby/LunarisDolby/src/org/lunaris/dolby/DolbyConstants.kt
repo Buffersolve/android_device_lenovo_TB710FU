@@ -34,6 +34,15 @@ object DolbyConstants {
     
     const val PREF_FILE_PRESETS = "presets"
 
+    // TB520FU: a new install starts with Dolby on and the Dynamic profile.
+    const val DEFAULT_ENABLED = true
+    const val DEFAULT_PROFILE = 0
+
+    // TB520FU: the stock Lenovo DAX takes the graphic EQ band gains in 1/16 dB
+    // (the stock Lenovo UI: -160..160 for -10..10 dB), not 1/10 dB.
+    const val GEQ_UNITS_PER_DB = 16f
+    const val GEQ_MAX_GAIN = 160
+
     enum class DsParam(val id: Int, val length: Int = 1) {
         HEADPHONE_VIRTUALIZER(101),
         SPEAKER_VIRTUALIZER(102),
