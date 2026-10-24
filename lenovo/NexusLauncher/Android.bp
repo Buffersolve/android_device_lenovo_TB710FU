@@ -2,15 +2,12 @@
 // SPDX-FileCopyrightText: 2026 The LineageOS Project
 // SPDX-License-Identifier: Apache-2.0
 //
-// Pixel Launcher (tablet) with two swipe-home fixes (see patch_launcher.py):
-// the taskbar Y offset of the icon alignment animation is computed on the
-// launcher DeviceProfile, so the dock lands exactly on the hotseat with the
-// stock 66dp grid icons, and the taskbar search bar is hidden while the
-// hotseat search bar widget flies into place (TaskbarQsbHider), so it is not
-// drawn twice when returning from Google search; the transient taskbar no
-// longer stays stuck open in apps (gesture input consumer switched mid-touch,
-// quick switch from home)
-// classes.dex is edited with
+// Pixel Launcher (tablet) with fixes applied at build time (see
+// patch_launcher.py): the swipe-home dock lands exactly on the hotseat with the
+// stock 66dp grid icons, the taskbar search bar is hidden while the hotseat
+// search bar widget flies into place (TaskbarQsbHider), and the transient
+// taskbar no longer stays stuck open in apps (input consumer switched
+// mid-touch, quick switch from home). classes.dex is edited with
 // baksmali/smali from external/google-smali. The prebuilt comes from
 // vendor/pixel/launcher; the patched APK is re-signed with the platform key,
 // which Google app (Discover) and At a Glance accept. Listed in
