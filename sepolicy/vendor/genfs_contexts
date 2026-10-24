@@ -10,3 +10,13 @@ genfscon proc /Pen_ID u:object_r:vendor_proc_lenovo_touch:s0
 # Pen/keyboard wireless charging transmitter (pen attach, MAC, Qi commands)
 genfscon sysfs /devices/platform/soc/soc:qcom,pmic_glink/soc:qcom,pmic_glink:qcom,battery_charger/power_supply/wls_tx u:object_r:vendor_sysfs_wls_tx:s0
 genfscon sysfs /firmware/fdt u:object_r:vendor_sysfs_tb520fu_fdt:s0
+
+# Wakeup source statistics read by system_suspend. Without these the nodes
+# keep the generic sysfs label or inherit the vendor labels of their parents
+# above, and system_suspend is denied reading them.
+genfscon sysfs /devices/platform/soc/soc:hall_switch/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/soc:lenovo_kb/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/soc:qcom,pmic_glink/soc:qcom,pmic_glink:qcom,battery_charger/power_supply/wls_tx/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a8c000.i2c/i2c-5/5-000e/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a90000.spi/spi_master/spi0/spi0.0/wakeup u:object_r:sysfs_wakeup:s0
+genfscon sysfs /devices/platform/soc/ac0000.qcom,qupv3_1_geni_se/a9c000.uart/wakeup u:object_r:sysfs_wakeup:s0
