@@ -5,4 +5,4 @@
 #
 
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/lineage_TB710FU.mk
+    $(LOCAL_DIR)/custom_TB710FU.mk
