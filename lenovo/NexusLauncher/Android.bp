@@ -2,10 +2,11 @@
 // SPDX-FileCopyrightText: 2026 The LineageOS Project
 // SPDX-License-Identifier: Apache-2.0
 //
-// Pixel Launcher (tablet) with the swipe-home dock alignment fixed: the taskbar
-// Y offset of the icon alignment animation is computed on the launcher
-// DeviceProfile instead of the taskbar one, so the dock lands exactly on the
-// hotseat with the stock 66dp grid icons (see patch_launcher.py). The prebuilt
+// Pixel Launcher (tablet) with two swipe-home fixes (see patch_launcher.py):
+// the taskbar Y offset of the icon alignment animation is computed on the
+// launcher DeviceProfile, so the dock lands exactly on the hotseat with the
+// stock 66dp grid icons, and returning from Google search no longer flies a
+// second search bar over the taskbar one. The prebuilt
 // comes from vendor/pixel/launcher; the patched APK is re-signed with the
 // platform key, which Google app / Discover and At a Glance accept. Listed in
 // PRODUCT_SOONG_NAMESPACES in device.mk.
