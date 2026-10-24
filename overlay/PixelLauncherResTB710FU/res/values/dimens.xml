@@ -4,10 +4,16 @@
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources>
-    <!-- Match the hotseat icon size of the responsive grid (66dp in both
-         orientations at 1280x800dp). DeviceProfile.getTaskbarOffsetY() aligns
-         the taskbar with the hotseat using the taskbar icon size, so with the
-         default 57dp the dock is drawn 19px too low during the swipe-home
-         animation and snaps up when the real hotseat takes over. -->
-    <dimen name="transient_taskbar_icon_size">66dp</dimen>
+    <!-- Swipe-home dock alignment. DeviceProfile.getTaskbarOffsetY() aligns the
+         transient taskbar with the hotseat using the taskbar icon size (57dp,
+         transient_taskbar_icon_size), while the responsive grid draws the
+         hotseat icons at iconSize60dp (66dp at 1280x800dp). With the two sizes
+         differing the dock is drawn 19px too low during the swipe-home
+         animation and snaps up when the real hotseat takes over. Draw the grid
+         icons at the taskbar size, and let the hotseat icon bottom space
+         ((cell height - icon size) / 2 = 22px) pass the min() with the grid
+         visualization spacing (6dp = 15px), so the taskbar lands exactly on
+         the hotseat. Measured: 19px -> 0px. -->
+    <dimen name="iconSize60dp">57dp</dimen>
+    <dimen name="grid_visualization_vertical_cell_spacing">9dp</dimen>
 </resources>

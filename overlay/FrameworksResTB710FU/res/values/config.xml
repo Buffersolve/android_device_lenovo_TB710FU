@@ -128,8 +128,10 @@
     <integer name="config_safe_media_volume_index">11</integer>
     <integer name="config_safe_media_volume_usb_mB">-1900</integer>
 
-    <!-- Refresh rate: adaptive up to 120 Hz by default like ZUI; 144 Hz is
-         meant to be used only as a fixed rate (Settings: 144 + VRR off). -->
+    <!-- Refresh rate: adaptive 30-120 Hz by default like ZUI (30 Hz idle,
+         60 Hz static, up to 120 Hz for touch and animations). 144 Hz can be
+         picked in Settings; it works adaptively too since the SDM idle fps
+         switch is disabled (vendor.prop). -->
     <integer name="config_defaultRefreshRate">0</integer>
     <integer name="config_defaultPeakRefreshRate">120</integer>
 
