@@ -52,3 +52,7 @@ ro.config.lgsi.device.type=pad
 # time_daemon starts. Keep their info/warning/error lines only.
 log.tag.DrmLibTime=I
 log.tag.QC-time-services=I
+
+# Build maintainer, shown on Settings > About tablet (patches/packages_apps_Settings-0003)
+ro.custom.maintainer=Buffersolve 🇺🇦
+ro.custom.maintainer.url=https://github.com/Buffersolve

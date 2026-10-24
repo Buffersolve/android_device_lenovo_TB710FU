@@ -133,6 +133,8 @@ apply_patch packages/apps/Settings \
 #       stock Lenovo settings app did); otherwise it opens directly.
 apply_patch packages/apps/Settings \
     "$PATCHES/packages_apps_Settings-0002-lenovo-place-holder-activity.patch"
+apply_patch packages/apps/Settings \
+    "$PATCHES/packages_apps_Settings-0003-maintainer-on-about-page.patch"
 
 # vendor/lineage
 # 0001: kernel.mk installs every kernel module it builds that is not in
