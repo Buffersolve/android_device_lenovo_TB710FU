@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-     Local manifest for building TB710FU on top of Evolution X (cnb).
+     Local manifest for building TB710FU on top of PixelOS (seventeen).
      Copy to .repo/local_manifests/TB710FU.xml, then `repo sync`.
 -->
 <manifest>
-  <remote name="tb710fu" fetch="https://github.com/sungwon1002" revision="cnb" />
-  <remote name="tb520fu" fetch="https://github.com/wnduddld0513" revision="seventeen" />
+  <remote name="buffersolve" fetch="https://github.com/Buffersolve" revision="seventeen" />
 
-  <project name="android_device_lenovo_TB710FU" path="device/lenovo/TB710FU" remote="tb710fu" />
-  <project name="android_vendor_lenovo_TB710FU" path="vendor/lenovo/TB710FU" remote="tb710fu" />
-  <project name="android_kernel_lenovo_TB520FU" path="kernel/lenovo/TB710FU" remote="tb520fu" />
+  <project name="android_device_lenovo_TB710FU" path="device/lenovo/TB710FU" remote="buffersolve" />
+  <project name="android_vendor_lenovo_TB710FU" path="vendor/lenovo/TB710FU" remote="buffersolve" clone-depth="1" />
+  <project name="android_kernel_lenovo_sm8650" path="kernel/lenovo/TB710FU" remote="buffersolve" clone-depth="1" />
 </manifest>
