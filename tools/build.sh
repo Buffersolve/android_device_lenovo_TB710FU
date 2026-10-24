@@ -26,6 +26,10 @@ if [ "${WITH_ADB_INSECURE:-false}" = true ]; then
 else
     unset WITH_ADB_INSECURE
 fi
+# ro.build.user / ro.build.host (and the description) instead of the local
+# user and machine name; override from the environment if wanted.
+export BUILD_USERNAME=${BUILD_USERNAME:-buffersolve}
+export BUILD_HOSTNAME=${BUILD_HOSTNAME:-pixelos}
 source build/envsetup.sh > /dev/null
 breakfast TB710FU user > /dev/null 2>&1 || { echo "breakfast failed" >&2; exit 1; }
 
