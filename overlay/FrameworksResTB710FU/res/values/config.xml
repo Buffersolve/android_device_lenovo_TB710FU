@@ -128,6 +128,18 @@
     <integer name="config_safe_media_volume_index">11</integer>
     <integer name="config_safe_media_volume_usb_mB">-1900</integer>
 
+    <!-- Lenovo pen / keyboard / folio / double tap to wake bridge
+         (input/, tb520fu-input / InputCore), loaded into system_server as a
+         DeviceKeyHandler. PixelOS reads these arrays from the android framework
+         (custom_config.xml, PhoneWindowManager), not from lineageos.platform
+         like LineageOS, so the LineageSdkResTB710FU copy alone never loaded it. -->
+    <string-array name="config_deviceKeyHandlerLibs" translatable="false">
+        <item>/system_ext/framework/tb520fu-input.jar</item>
+    </string-array>
+    <string-array name="config_deviceKeyHandlerClasses" translatable="false">
+        <item>com.tb520fu.input.KeyHandler</item>
+    </string-array>
+
     <!-- Refresh rate: adaptive 30-120 Hz by default like ZUI (30 Hz idle,
          60 Hz static, up to 120 Hz for touch and animations). 144 Hz can be
          picked in Settings; it works adaptively too since the SDM idle fps
