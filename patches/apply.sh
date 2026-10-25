@@ -137,6 +137,11 @@ apply_patch packages/apps/Settings \
     "$PATCHES/packages_apps_Settings-0002-lenovo-place-holder-activity.patch"
 apply_patch packages/apps/Settings \
     "$PATCHES/packages_apps_Settings-0003-maintainer-on-about-page.patch"
+# 0004: Radio info on the About page opens com.android.phone RadioInfo, which
+#       crashes without a phone. Hide it when the device can neither call nor
+#       use mobile data (this tablet is Wi-Fi only).
+apply_patch packages/apps/Settings \
+    "$PATCHES/packages_apps_Settings-0004-hide-radio-info-without-phone.patch"
 
 # vendor/lineage
 # 0001: kernel.mk installs every kernel module it builds that is not in

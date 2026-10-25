@@ -1,0 +1,49 @@
+diff --git a/res/xml/my_device_info.xml b/res/xml/my_device_info.xml
+index a6ded9f..ed4c2b9 100644
+--- a/res/xml/my_device_info.xml
++++ b/res/xml/my_device_info.xml
+@@ -96,7 +96,8 @@
+         <Preference
+             android:title="@string/radio_info_title"
+             android:key="radio_info_settings"
+-            android:order="6">
++            android:order="6"
++            settings:controller="com.android.settings.deviceinfo.RadioInfoPreferenceController">
+             <intent android:action="android.intent.action.MAIN"
+                     android:targetPackage="com.android.phone"
+                     android:targetClass="com.android.phone.settings.RadioInfo" />
+diff --git a/src/com/android/settings/deviceinfo/RadioInfoPreferenceController.java b/src/com/android/settings/deviceinfo/RadioInfoPreferenceController.java
+new file mode 100644
+index 0000000..b094ddd
+--- /dev/null
++++ b/src/com/android/settings/deviceinfo/RadioInfoPreferenceController.java
+@@ -0,0 +1,29 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.settings.deviceinfo;
++
++import android.content.Context;
++
++import com.android.settings.Utils;
++import com.android.settings.core.BasePreferenceController;
++
++/**
++ * Radio info on the About page. RadioInfo needs a phone (it crashes with
++ * "Default phones haven't been made yet!" otherwise), so hide it on devices
++ * that can neither call nor use mobile data, like SIM status.
++ */
++public class RadioInfoPreferenceController extends BasePreferenceController {
++
++    public RadioInfoPreferenceController(Context context, String preferenceKey) {
++        super(context, preferenceKey);
++    }
++
++    @Override
++    public int getAvailabilityStatus() {
++        return Utils.isMobileDataCapable(mContext) || Utils.isVoiceCapable(mContext)
++                ? AVAILABLE : UNSUPPORTED_ON_DEVICE;
++    }
++}
