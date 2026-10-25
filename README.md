@@ -114,14 +114,16 @@ Unofficial builds include the PixelOS Updater (`net.pixelos.ota`), pointed by
 the zips are hosted on SourceForge. To publish a build:
 
 ```bash
-SF_PROJECT=<project> SF_USER=<user> device/lenovo/TB710FU/tools/ota_release.sh \
+SF_PROJECT=pixelos-tb710fu SF_USER=<user> device/lenovo/TB710FU/tools/ota_release.sh \
     out/target/product/TB710FU/PixelOS_TB710FU-17.0-<date>.zip changelog.md
 ```
 
-It uploads the zip (leave out `SF_USER` if it is already uploaded), writes the
-feed entry with `packages/apps/Updater/tools/pixelos_feed.py` and the changelog,
-and pushes the OTA repository. Updates must be signed with the same keys as
-the installed build.
+It uploads the zip, the `recovery.img` next to it and a `sha256sums.txt` to
+`TB710FU/<date>/` of the SourceForge project (leave out `SF_USER` if they are
+already uploaded), writes the feed entry with
+`packages/apps/Updater/tools/pixelos_feed.py` and the changelog, and pushes the
+OTA repository. Updates must be signed with the same keys as the installed
+build.
 
 ## Extracting blobs
 
