@@ -94,6 +94,12 @@ apply_patch frameworks/base \
 #       strength levels the LED does not have.
 apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0006-flashlight-strength-control-config.patch"
+# 0007: PropImitationHooks: the certified props JSON names Build.VERSION fields
+#       (RELEASE, SECURITY_PATCH, INCREMENTAL, DEVICE_INITIAL_SDK_INT) without
+#       the VERSION. prefix, so they were never set; also skip the PIF spoof*
+#       options, which are not Build fields.
+apply_patch frameworks/base \
+    "$PATCHES/frameworks_base-0007-pif-version-fields.patch"
 # frameworks/native
 # 0001: RefreshRateSelector: a static screen (all layers vote Min) goes to the
 #       lowest mode of at least 60 Hz, not the policy minimum; the idle timer

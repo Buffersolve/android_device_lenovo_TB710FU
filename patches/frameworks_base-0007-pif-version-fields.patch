@@ -1,0 +1,39 @@
+diff --git a/core/java/com/android/internal/util/PropImitationHooks.java b/core/java/com/android/internal/util/PropImitationHooks.java
+index 40e51e284..3a2763b2d 100644
+--- a/core/java/com/android/internal/util/PropImitationHooks.java
++++ b/core/java/com/android/internal/util/PropImitationHooks.java
+@@ -297,7 +297,33 @@ public class PropImitationHooks {
+                 Log.e(TAG, "Invalid entry in certified props: " + entry);
+                 continue;
+             }
+-            setPropValue(fieldAndProp[0], fieldAndProp[1]);
++            final String key = fieldAndProp[0];
++            // PIF style options (spoofBuild, spoofProvider, ...) are not Build fields
++            if (key.startsWith("spoof")) {
++                continue;
++            }
++            setPropValue(buildFieldKey(key), fieldAndProp[1]);
++        }
++    }
++
++    /**
++     * The PIF JSON names Build.VERSION fields without the "VERSION." prefix
++     * (RELEASE, SECURITY_PATCH, INCREMENTAL, DEVICE_INITIAL_SDK_INT).
++     */
++    private static String buildFieldKey(String key) {
++        if (key.startsWith("VERSION.") || hasField(Build.class, key)
++                || !hasField(Build.VERSION.class, key)) {
++            return key;
++        }
++        return "VERSION." + key;
++    }
++
++    private static boolean hasField(Class<?> clazz, String name) {
++        try {
++            clazz.getDeclaredField(name);
++            return true;
++        } catch (NoSuchFieldException e) {
++            return false;
+         }
+     }
+ 
