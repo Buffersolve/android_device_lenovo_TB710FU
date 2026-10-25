@@ -89,6 +89,11 @@ apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0004-keyboard-desktop-first-opt-out.patch"
 apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0005-fgs-manager-hidden-packages.patch"
+# 0006: config_flashlightStrengthControl (SystemUI, default true), so the device
+#       can keep the flashlight tile on/off when the camera HAL reports torch
+#       strength levels the LED does not have.
+apply_patch frameworks/base \
+    "$PATCHES/frameworks_base-0006-flashlight-strength-control-config.patch"
 # frameworks/native
 # 0001: RefreshRateSelector: a static screen (all layers vote Min) goes to the
 #       lowest mode of at least 60 Hz, not the policy minimum; the idle timer

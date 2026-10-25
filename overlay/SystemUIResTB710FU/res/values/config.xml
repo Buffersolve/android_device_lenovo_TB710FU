@@ -20,4 +20,9 @@
     <string-array name="config_fgsManagerHiddenPackages" translatable="false">
         <item>com.zui.udevice</item>
     </string-array>
+
+    <!-- The camera HAL reports 4 torch strength levels, but the flash LED only
+         turns on and off: keep the flashlight tile a plain toggle
+         (frameworks_base-0006). -->
+    <bool name="config_flashlightStrengthControl">false</bool>
 </resources>
