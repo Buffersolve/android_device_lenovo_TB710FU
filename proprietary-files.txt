@@ -654,6 +654,28 @@ vendor/lib64/libminksocket_vendor.so
 vendor/lib64/libnative-api.so
 vendor/lib64/libqcbor.so
 
+# SPU (secure processor): spdaemon, secure NVM, SPU HALs, StrongBox KeyMint
+vendor/bin/hw/android.hardware.security.keymint-service-spu-qti
+vendor/bin/hw/vendor.qti.hardware.spu-service
+vendor/bin/hw/vendor.qti.spu@1.1-service
+vendor/bin/hw/vendor.qti.spu@2.0-service
+vendor/bin/sec_nvm
+vendor/bin/spdaemon
+vendor/etc/init/android.hardware.security.keymint-service-spu-qti.rc
+vendor/etc/init/init.spdaemon.rc
+vendor/etc/init/init.spuservice.rc
+vendor/etc/init/init.vendor.qti.hardware.spu.service.rc
+vendor/etc/init/init.vendor.qti.spu@1.1-service.rc
+vendor/etc/permissions/sku_pineapple/android.hardware.strongbox_keystore.xml
+vendor/lib64/android.hardware.security.sharedsecret-V2-ndk.so:vendor/lib64/android.hardware.security.sharedsecret-V2-ndk_spu.so;FIX_SONAME
+vendor/lib64/libspukeymint.so
+vendor/lib64/libspukeymintdeviceutils.so
+vendor/lib64/libspukeymintutils.so
+vendor/lib64/vendor.qti.hardware.spu-V2-ndk.so
+vendor/lib64/vendor.qti.spu@1.0.so
+vendor/lib64/vendor.qti.spu@1.1.so
+vendor/lib64/vendor.qti.spu@2.0.so
+
 # SSR
 vendor/bin/ssr_diag
 vendor/bin/ssr_setup

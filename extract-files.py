@@ -129,6 +129,11 @@ blob_fixups: blob_fixups_user_type = {
         .add_line_if_missing('lseek: 1'),
     'vendor/etc/vintf/manifest/c2_manifest_vendor.xml': blob_fixup()
         .regex_replace('.*IComponentStore/dolby.*\n', ''),
+    (
+        'vendor/bin/hw/android.hardware.security.keymint-service-spu-qti',
+        'vendor/lib64/libspukeymint.so',
+    ): blob_fixup()
+        .replace_needed('android.hardware.security.sharedsecret-V2-ndk.so', 'android.hardware.security.sharedsecret-V2-ndk_spu.so'),
     'vendor/lib64/libqcodec2_core.so': blob_fixup()
         .add_needed('libcodec2_shim.so'),
     (

@@ -22,6 +22,16 @@
         <name>android.hardware.gatekeeper</name>
         <fqname>IGatekeeper/default</fqname>
     </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IKeyMintDevice/strongbox</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.security.keymint</name>
+        <version>3</version>
+        <fqname>IRemotelyProvisionedComponent/strongbox</fqname>
+    </hal>
     <hal format="hidl">
         <name>com.dsi.ant</name>
         <transport>hwbinder</transport>
@@ -73,9 +83,24 @@
         <fqname>@1.0::ISecureProcessor/qti-tee</fqname>
         <fqname>@1.0::ISecureProcessor/qti-tvm</fqname>
     </hal>
+    <hal format="aidl">
+        <name>vendor.qti.hardware.spu</name>
+        <version>2</version>
+        <fqname>ISPUManager/default</fqname>
+    </hal>
     <hal format="hidl">
         <name>vendor.qti.hardware.wifi.wifilearner</name>
         <transport>hwbinder</transport>
         <fqname>@1.0::IWifiStats/wifiStats</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>vendor.qti.spu</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.1::ISPUManager/default</fqname>
+    </hal>
+    <hal format="hidl">
+        <name>vendor.qti.spu</name>
+        <transport>hwbinder</transport>
+        <fqname>@2.0::ISPUManager/default</fqname>
     </hal>
 </manifest>
