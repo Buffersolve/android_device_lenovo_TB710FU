@@ -340,3 +340,13 @@ ro.vendor.config.lgsi.short_market_name=Lenovo Xiaoxin Pad Pro GT
 ro.vendor.config.lgsi.project=topaz
 ro.vendor.config.lgsi.platform=qcom
 ro.vendor.config.lgsi.not_support_vibrator=true
+
+# Device IDs provisioned for key attestation (from the stock vendor and odm
+# build.prop). KeyMint refuses ID attestation (CANNOT_ATTEST_IDS) when the
+# requested IDs differ, e.g. ro.product.name TB710FU vs TB710FU_PRC, or when
+# Build is spoofed for GMS / Play Store.
+ro.product.brand_for_attestation=Lenovo
+ro.product.device_for_attestation=TB710FU
+ro.product.manufacturer_for_attestation=Lenovo
+ro.product.model_for_attestation=TB710FU
+ro.product.name_for_attestation=TB710FU_PRC
