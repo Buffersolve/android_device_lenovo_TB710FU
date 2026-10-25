@@ -1,0 +1,3 @@
+# AttestationService fetches the certified props for the PixelOS branch
+# named by net.pixelos.version; without this the URL has no branch (404).
+get_prop(system_server, custom_version_prop)
