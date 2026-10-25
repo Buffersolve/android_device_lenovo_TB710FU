@@ -47,6 +47,7 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 import tempfile
 import zipfile
 
@@ -66,6 +67,16 @@ def edit(root, cls, method, pattern, repl, count):
         raise SystemExit(f"{cls}.{method}: expected {count} match(es), found {n}")
     open(p, "w").write(src[:m.start(2)] + body + src[m.end(2):])
     print(f"{cls}.{method}: {n} edit(s)")
+
+
+def check_dex_header(path):
+    with open(path, "rb") as f:
+        head = f.read(0x28)
+    version = int(head[4:7])
+    header_size = int.from_bytes(head[0x24:0x28], "little")
+    expected = 0x78 if version >= 41 else 0x70
+    if header_size != expected:
+        sys.exit(f"{path}: dex {version:03d} with a {header_size} byte header")
 
 
 def patch_smali(root):
@@ -137,7 +148,11 @@ def main():
         run(args.baksmali, "d", os.path.join(tmp, "classes.dex"), "-o", smali_dir)
         patch_smali(smali_dir)
         new_dex = os.path.join(tmp, "classes.new.dex")
-        run(args.smali, "a", smali_dir, "-o", new_dex, "--api", "35")
+        # --api 34 writes dex 039. With 35 smali stamps dex 041 but keeps the
+        # 0x70 byte header instead of the 0x78 container header, which ART
+        # rejects ("Header size is 112 but 120 was expected").
+        run(args.smali, "a", smali_dir, "-o", new_dex, "--api", "34")
+        check_dex_header(new_dex)
         with zipfile.ZipFile(args.helper_dex_zip) as hz:
             helper = hz.read("classes.dex")
         helper_name = f"classes{dex_count + 1}.dex"

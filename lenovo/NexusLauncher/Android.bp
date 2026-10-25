@@ -52,7 +52,7 @@ java_genrule {
         "tb710fu_patch_launcher",
     ],
     out: ["NexusLauncherReleaseTablet.apk"],
-    cmd: "$(location d8) --release --min-api 35 " +
+    cmd: "$(location d8) --release --min-api 34 " +
         "--output $(genDir)/helper.zip $(location :TB710FUTaskbarQsbHider) && " +
         "$(location tb710fu_patch_launcher) " +
         "--baksmali $(location smali-baksmali) --smali $(location android-smali) " +
