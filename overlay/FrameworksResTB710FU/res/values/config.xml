@@ -325,4 +325,9 @@
         <item>com.painting.draw</item>
         <item>com.google.android.apps.docs</item>
     </string-array>
+
+    <!-- The TEE KeyMint has no attestation keys (every attested key fails with
+         SECURE_HW_COMMUNICATION_FAILED), the SPU StrongBox has them: generate
+         attested keys there (frameworks_base-0008). -->
+    <bool name="config_keystoreAttestStrongBoxFallback">true</bool>
 </resources>

@@ -100,6 +100,11 @@ apply_patch frameworks/base \
 #       options, which are not Build fields.
 apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0007-pif-version-fields.patch"
+# 0008: config_keystoreAttestStrongBoxFallback (default false): when the TEE
+#       KeyMint fails an attested key generation with
+#       SECURE_HW_COMMUNICATION_FAILED, generate the key in StrongBox instead.
+apply_patch frameworks/base \
+    "$PATCHES/frameworks_base-0008-keystore-strongbox-attestation-fallback.patch"
 # frameworks/native
 # 0001: RefreshRateSelector: a static screen (all layers vote Min) goes to the
 #       lowest mode of at least 60 Hz, not the policy minimum; the idle timer
