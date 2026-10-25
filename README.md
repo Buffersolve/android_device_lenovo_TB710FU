@@ -19,6 +19,13 @@ Maintainer: [Buffersolve](https://github.com/Buffersolve)
 | Board API level | 34 |
 | Super partition | 20401094656 bytes (group 19318964224) |
 
+## Downloads
+
+Builds are on SourceForge: [pixelos-tb710fu/TB710FU](https://sourceforge.net/projects/pixelos-tb710fu/files/TB710FU/). Each build has its
+own folder with the zip, the matching `recovery.img` and `sha256sums.txt`; see
+[Installing](#installing). Installed builds get later builds through the
+built-in Updater.
+
 ## Based on
 
 This tree is a fork of the TB710FU tree by
@@ -99,6 +106,8 @@ it applied, so it is safe to run before every build. `repo sync` resets the
 patched repositories, so run it again after syncing.
 
 ## Installing
+
+Download the zip and `recovery.img` of one build from [SourceForge](https://sourceforge.net/projects/pixelos-tb710fu/files/TB710FU/).
 
 1. Flash the PixelOS recovery from the build to both slots:
    `fastboot flash recovery_a recovery.img` and `fastboot flash recovery_b recovery.img`.
