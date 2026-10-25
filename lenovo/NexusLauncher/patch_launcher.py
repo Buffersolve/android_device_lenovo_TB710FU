@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Patch Pixel Launcher (tablet) for TB710FU.
 
-classes.dex is disassembled with baksmali, edited, and reassembled with smali;
-the TaskbarQsbHider helper is added as an extra dex. Every edit must match
+classes.dex and classes2.dex are disassembled with baksmali, edited, and
+reassembled with smali; the TaskbarQsbHider and SmartspaceWeather helpers are
+added as an extra dex. Every edit must match
 exactly the expected number of times, otherwise the build fails (e.g. after a
 Pixel Launcher update), instead of silently shipping an unpatched launcher.
 
@@ -40,6 +41,14 @@ Pixel Launcher update), instead of silently shipping an unpatched launcher.
    the taskbar stays in its home state and never stashes. Make the listener
    read isInLauncher(mState) when it runs.
 
+5. At a Glance weather card did not open anything. Its tap action goes to the
+   Google app smartspace trampoline, which only forwards it when the caller is
+   a Google-signed Pixel Launcher ("QSB permission is not trusted"), and this
+   one is re-signed. The BcSmartspace card click listeners (classes2.dex) call
+   IntentStarter.startFromAction(SmartspaceAction|TapAction, View, boolean);
+   pass the card's SmartspaceTarget along to SmartspaceWeather, which starts
+   Pixel Weather for weather cards pointing at the trampoline.
+
 usage: patch_launcher.py --baksmali CMD --smali CMD --helper-dex-zip ZIP <in.apk> <out.apk>
 """
 import argparse
@@ -53,6 +62,9 @@ import zipfile
 
 HOST_VIEW = "Lcom/android/launcher3/widget/LauncherAppWidgetHostView;"
 HIDER = "Lcom/android/launcher3/tb710fu/TaskbarQsbHider;"
+WEATHER = "Lcom/android/launcher3/tb710fu/SmartspaceWeather;"
+STARTER = "Lcom/android/systemui/plugins/BcSmartspaceDataPlugin$IntentStarter;"
+TARGET = "Landroid/app/smartspace/SmartspaceTarget;"
 
 
 def edit(root, cls, method, pattern, repl, count):
@@ -127,6 +139,54 @@ def patch_smali(root):
          r"\1\n    invoke-direct {p0}, " + consumer + r"->cleanupAfterMotionEvent()V\n", 1)
 
 
+def patch_smali2(root):
+    # 5. weather card: hand the SmartspaceTarget to SmartspaceWeather
+    for action in ("Landroid/app/smartspace/SmartspaceAction;",
+                   "Landroid/app/smartspace/uitemplatedata/TapAction;"):
+        call = (r"invoke-interface \{([vp]\d+), ([vp]\d+), ([vp]\d+), ([vp]\d+)\}, "
+                + re.escape(STARTER) + r"->startFromAction\(" + re.escape(action)
+                + r"Landroid/view/View;Z\)V")
+        hits = []
+        for dirpath, _, files in os.walk(root):
+            for name in files:
+                path = os.path.join(dirpath, name)
+                src = open(path).read()
+                if re.search(call, src) and ".implements Landroid/view/View$OnClickListener;" in src:
+                    hits.append(path)
+        if len(hits) != 1:
+            raise SystemExit(f"startFromAction({action}) click listener not unique: {hits}")
+        path = hits[0]
+        src = open(path).read()
+        m = re.search(r"(\.method public final onClick\(Landroid/view/View;\)V\n)(.*?)(\n\.end method)",
+                      src, re.S)
+        if not m:
+            raise SystemExit(f"{path}: onClick not found")
+        body = m.group(2)
+        loads = re.findall(r"iget-object ([vp]\d+), p0, L[^;]+;->\w+:" + re.escape(TARGET), body)
+        calls = list(re.finditer(call, body))
+        if len(loads) != 1 or len(calls) != 1:
+            raise SystemExit(f"{path}: expected one target load and one call, "
+                             f"found {len(loads)} and {len(calls)}")
+        reg = loads[0]
+        load_end = re.search(r"iget-object " + reg + r", p0, L[^;]+;->\w+:" + re.escape(TARGET),
+                             body).end()
+        between = body[load_end:calls[0].start()]
+        # the target register must still hold the target at the call
+        if re.search(r"^\s+(?!invoke|if-|check-cast|\.)\S+ " + reg + r"\b", between, re.M) \
+                or re.search(r"^\s+move-result(-object)? " + reg + r"\b", between, re.M):
+            raise SystemExit(f"{path}: {reg} is overwritten before startFromAction")
+        body = body[:calls[0].start()] + re.sub(
+            call, r"invoke-static {\1, \2, \3, \4, " + reg + "}, " + WEATHER
+            + "->startFromAction(" + STARTER + action + "Landroid/view/View;Z" + TARGET + ")V",
+            body[calls[0].start():], count=1)
+        open(path, "w").write(src[:m.start(2)] + body + src[m.end(2):])
+        print(f"{os.path.relpath(path, root)}.onClick: SmartspaceWeather ({action})")
+
+
+# dex file -> edits; the other dex files are copied unchanged
+DEX_EDITS = {"classes.dex": patch_smali, "classes2.dex": patch_smali2}
+
+
 def run(cmd, *args):
     subprocess.run(shlex.split(cmd) + list(args), check=True)
 
@@ -142,17 +202,21 @@ def main():
 
     with tempfile.TemporaryDirectory() as tmp:
         with zipfile.ZipFile(args.src) as z:
-            open(os.path.join(tmp, "classes.dex"), "wb").write(z.read("classes.dex"))
             dex_count = sum(1 for n in z.namelist() if re.fullmatch(r"classes\d*\.dex", n))
-        smali_dir = os.path.join(tmp, "smali")
-        run(args.baksmali, "d", os.path.join(tmp, "classes.dex"), "-o", smali_dir)
-        patch_smali(smali_dir)
-        new_dex = os.path.join(tmp, "classes.new.dex")
-        # --api 34 writes dex 039. With 35 smali stamps dex 041 but keeps the
-        # 0x70 byte header instead of the 0x78 container header, which ART
-        # rejects ("Header size is 112 but 120 was expected").
-        run(args.smali, "a", smali_dir, "-o", new_dex, "--api", "34")
-        check_dex_header(new_dex)
+            new_dex = {}
+            for name, patch in DEX_EDITS.items():
+                old = os.path.join(tmp, name)
+                open(old, "wb").write(z.read(name))
+                smali_dir = os.path.join(tmp, name + ".smali")
+                run(args.baksmali, "d", old, "-o", smali_dir)
+                patch(smali_dir)
+                new = os.path.join(tmp, name + ".new")
+                # --api 34 writes dex 039. With 35 smali stamps dex 041 but keeps the
+                # 0x70 byte header instead of the 0x78 container header, which ART
+                # rejects ("Header size is 112 but 120 was expected").
+                run(args.smali, "a", smali_dir, "-o", new, "--api", "34")
+                check_dex_header(new)
+                new_dex[name] = new
         with zipfile.ZipFile(args.helper_dex_zip) as hz:
             helper = hz.read("classes.dex")
         helper_name = f"classes{dex_count + 1}.dex"
@@ -163,12 +227,12 @@ def main():
                 if info.filename.startswith("META-INF/") and base.endswith(
                         (".SF", ".RSA", ".EC", ".DSA", "MANIFEST.MF")):
                     continue  # old signature; android_app_import re-signs
-                data = open(new_dex, "rb").read() if info.filename == "classes.dex" \
+                data = open(new_dex[info.filename], "rb").read() if info.filename in new_dex \
                     else zin.read(info.filename)
                 zout.writestr(info, data, compress_type=info.compress_type)
             zout.writestr(zipfile.ZipInfo(helper_name, date_time=(2008, 1, 1, 0, 0, 0)), helper,
                           compress_type=zipfile.ZIP_DEFLATED)
-        print(f"added {helper_name} (TaskbarQsbHider)")
+        print(f"added {helper_name} (TaskbarQsbHider, SmartspaceWeather)")
 
 
 if __name__ == "__main__":

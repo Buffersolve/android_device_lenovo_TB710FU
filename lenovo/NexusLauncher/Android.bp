@@ -7,10 +7,13 @@
 // stock 66dp grid icons, the taskbar search bar is hidden while the hotseat
 // search bar widget flies into place (TaskbarQsbHider), and the transient
 // taskbar no longer stays stuck open in apps (input consumer switched
-// mid-touch, quick switch from home). classes.dex is edited with
+// mid-touch, quick switch from home), and the At a Glance weather card opens
+// Pixel Weather (SmartspaceWeather; the Google app trampoline it pointed at
+// rejects a re-signed launcher). classes.dex and classes2.dex are edited with
 // baksmali/smali from external/google-smali. The prebuilt comes from
 // vendor/pixel/launcher; the patched APK is re-signed with the platform key,
-// which Google app (Discover) and At a Glance accept. Listed in
+// which Google app (Discover) and At a Glance accept, except for the smartspace
+// tap trampoline. Listed in
 // PRODUCT_SOONG_NAMESPACES in device.mk.
 //
 
@@ -21,7 +24,7 @@ soong_namespace {
 java_library {
     name: "TB710FUTaskbarQsbHiderStubs",
     srcs: ["stubs/**/*.java"],
-    sdk_version: "current",
+    sdk_version: "system_current",
     installable: false,
 }
 
@@ -29,7 +32,7 @@ java_library {
     name: "TB710FUTaskbarQsbHider",
     srcs: ["src/**/*.java"],
     libs: ["TB710FUTaskbarQsbHiderStubs"],
-    sdk_version: "current",
+    sdk_version: "system_current",
     installable: false,
 }
 
