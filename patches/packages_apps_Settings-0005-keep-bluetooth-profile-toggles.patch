@@ -1,0 +1,22 @@
+diff --git a/src/com/android/settings/bluetooth/BluetoothDetailsConfigurableFragment.kt b/src/com/android/settings/bluetooth/BluetoothDetailsConfigurableFragment.kt
+index 9835684..894f3fe 100644
+--- a/src/com/android/settings/bluetooth/BluetoothDetailsConfigurableFragment.kt
++++ b/src/com/android/settings/bluetooth/BluetoothDetailsConfigurableFragment.kt
+@@ -199,14 +199,9 @@ abstract class BluetoothDetailsConfigurableFragment :
+         pageLayout.traverse { parent, settingItem ->
+             if (settingItem is DeviceSettingConfigNodeModel.Item.BuiltinItem) {
+                 findPreference<Preference>(settingItem.preferenceKey)?.let { pref ->
+-                    if (
+-                        settingItem
+-                            is DeviceSettingConfigNodeModel.Item.BuiltinItem.BluetoothProfilesItem
+-                    ) {
+-                        use(BluetoothDetailsProfilesController::class.java)?.run {
+-                            setInvisibleProfiles(settingItem.invisibleProfiles)
+-                        }
+-                    }
++                    // The Fast Pair config hides the phone calls and media audio
++                    // toggles (invisibleProfiles) for the Pixel Support app to show its
++                    // own, which this build does not have: keep the AOSP toggles.
+                     logItemShown(pref.key, pref.isVisible)
+                 }
+             }

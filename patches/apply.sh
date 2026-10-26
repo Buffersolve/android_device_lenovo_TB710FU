@@ -158,6 +158,12 @@ apply_patch packages/apps/Settings \
 #       use mobile data (this tablet is Wi-Fi only).
 apply_patch packages/apps/Settings \
     "$PATCHES/packages_apps_Settings-0004-hide-radio-info-without-phone.patch"
+# 0005: The Fast Pair device settings config hides the Bluetooth phone calls
+#       and media audio toggles for the Pixel Support app to show its own, and
+#       PixelOS does not ship it, so the toggles were gone (e.g. for AirPods).
+#       Keep the AOSP profile toggles.
+apply_patch packages/apps/Settings \
+    "$PATCHES/packages_apps_Settings-0005-keep-bluetooth-profile-toggles.patch"
 
 # vendor/lineage
 # 0001: kernel.mk installs every kernel module it builds that is not in
