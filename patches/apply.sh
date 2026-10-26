@@ -105,6 +105,20 @@ apply_patch frameworks/base \
 #       SECURE_HW_COMMUNICATION_FAILED, generate the key in StrongBox instead.
 apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0008-keystore-strongbox-attestation-fallback.patch"
+# 0009: VoIP apps (e.g. Discord) pick the speaker as communication device when
+#       Bluetooth headphones are connected over A2DP only (phone calls profile
+#       off), since apps cannot select A2DP. Ignore that speaker request then, so
+#       the voice plays on the headphones (frameworks_av-0001) and the built-in
+#       mic records.
+apply_patch frameworks/base \
+    "$PATCHES/frameworks_base-0009-voip-speaker-request-over-a2dp.patch"
+# frameworks/av
+# 0001: The default audio policy engine dropped A2DP from the phone strategy for
+#       VoIP (MODE_IN_COMMUNICATION) too, so with the headset's phone calls
+#       profile off, Discord & co. played on the speaker. Only drop it in a
+#       telephony call; with HFP on, AudioService still picks SCO.
+apply_patch frameworks/av \
+    "$PATCHES/frameworks_av-0001-voip-on-a2dp-without-sco.patch"
 # frameworks/native
 # 0001: RefreshRateSelector: a static screen (all layers vote Min) goes to the
 #       lowest mode of at least 60 Hz, not the policy minimum; the idle timer

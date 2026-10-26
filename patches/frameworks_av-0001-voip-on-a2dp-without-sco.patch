@@ -1,0 +1,19 @@
+diff --git a/services/audiopolicy/enginedefault/src/Engine.cpp b/services/audiopolicy/enginedefault/src/Engine.cpp
+index 25c223b..08709fb 100644
+--- a/services/audiopolicy/enginedefault/src/Engine.cpp
++++ b/services/audiopolicy/enginedefault/src/Engine.cpp
+@@ -212,9 +212,11 @@ void Engine::filterOutputDevicesForStrategy(legacy_strategy strategy,
+                 ALOGE("%s, STRATEGY_PHONE: Primary output not found", __func__);
+             }
+         }
+-        // Do not use A2DP devices when in call but use them when not in call
+-        // (e.g for voice mail playback)
+-        if (isInCall()) {
++        // Do not use A2DP devices in a telephony call but use them otherwise (e.g. for
++        // voice mail playback, or VoIP when the headset has no SCO link because its
++        // phone calls profile is off: the voice then plays on the A2DP headphones and
++        // the built-in mic records)
++        if (getPhoneState() == AUDIO_MODE_IN_CALL) {
+             availableOutputDevices.remove(availableOutputDevices.getDevicesFromTypes({
+                     AUDIO_DEVICE_OUT_BLUETOOTH_A2DP, AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES,
+                     AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER, }));

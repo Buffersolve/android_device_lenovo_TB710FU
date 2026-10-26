@@ -1,0 +1,56 @@
+diff --git a/services/core/java/com/android/server/audio/AudioDeviceBroker.java b/services/core/java/com/android/server/audio/AudioDeviceBroker.java
+index 07c9ab854..5ce950e7b 100644
+--- a/services/core/java/com/android/server/audio/AudioDeviceBroker.java
++++ b/services/core/java/com/android/server/audio/AudioDeviceBroker.java
+@@ -2436,6 +2436,9 @@ public class AudioDeviceBroker {
+     @Nullable private AudioDeviceAttributes preferredCommunicationDevice() {
+         AudioDeviceAttributes topDevice =
+                 mCommunicationStack.topClient().flatMap(x -> x.getDevice()).orElse(null);
++        if (isSpeakerRequestedOverA2dpOnly(topDevice)) {
++            topDevice = null;
++        }
+         if (isScoManagedByAudio()) {
+             if (topDevice != null && topDevice.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) {
+                 sendIMsg(MSG_I_MUTE_CALL, SENDMSG_REPLACE,
+@@ -2470,6 +2473,41 @@ public class AudioDeviceBroker {
+         }
+     }
+ 
++    /**
++     * Whether a VoIP app (not a privileged client such as the dialer) asked for the speaker
++     * while Bluetooth headphones are connected over A2DP only, with no headset (SCO) or LE
++     * audio link, e.g. because their phone calls profile is turned off. Apps cannot select
++     * A2DP as communication device, so they fall back to the speaker; follow the default
++     * route instead, which plays on the headphones while the built-in mic records.
++     */
++    @GuardedBy("mDeviceStateLock")
++    private boolean isSpeakerRequestedOverA2dpOnly(@Nullable AudioDeviceAttributes device) {
++        if (device == null || device.getType() != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
++            return false;
++        }
++        if (mCommunicationStack.topClient().map(c -> c.isPrivileged()).orElse(true)) {
++            return false;
++        }
++        boolean a2dp = false;
++        for (AudioDeviceInfo out : AudioManager.getDevicesStatic(AudioManager.GET_DEVICES_OUTPUTS)) {
++            switch (out.getType()) {
++                case AudioDeviceInfo.TYPE_BLUETOOTH_A2DP:
++                    a2dp = true;
++                    break;
++                case AudioDeviceInfo.TYPE_BLUETOOTH_SCO:
++                case AudioDeviceInfo.TYPE_BLE_HEADSET:
++                case AudioDeviceInfo.TYPE_BLE_SPEAKER:
++                case AudioDeviceInfo.TYPE_WIRED_HEADSET:
++                case AudioDeviceInfo.TYPE_WIRED_HEADPHONES:
++                case AudioDeviceInfo.TYPE_USB_HEADSET:
++                    return false;
++                default:
++                    break;
++            }
++        }
++        return a2dp;
++    }
++
+     /**
+      * Configures audio policy manager and audio HAL according to active communication route.
+      * Always called from message Handler.
