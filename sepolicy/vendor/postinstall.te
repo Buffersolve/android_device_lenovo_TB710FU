@@ -5,3 +5,7 @@ allow postinstall vendor_sysfs_tb520fu_fdt:file r_file_perms;
 allow postinstall block_device:dir search;
 allow postinstall { block_device boot_block_device }:lnk_file read;
 allow postinstall boot_block_device:blk_file rw_file_perms;
+# update_engine marks the verified partitions read-only (BLKROSET): allow it
+# for the write
+allow postinstall self:global_capability_class_set sys_admin;
+allowxperm postinstall boot_block_device:blk_file ioctl { BLKROGET BLKROSET };

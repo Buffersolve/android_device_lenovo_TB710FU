@@ -23,7 +23,9 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <linux/fs.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -258,6 +260,7 @@ int Run(const char* running_fdt, const char* vendor_boot) {
         return 1;
     }
     int ret = 1;
+    bool restore_read_only = false;
     do {
         off64_t image_size = lseek64(fd, 0, SEEK_END);
         uint8_t hdr[kVendorBootHeaderSize];
@@ -301,6 +304,19 @@ int Run(const char* running_fdt, const char* vendor_boot) {
             break;
         }
 
+        // update_engine marks the partitions it has verified read-only. Allow
+        // writing for the step and mark it read-only again afterwards.
+        int read_only = 0;
+        if (ioctl(fd, BLKROGET, &read_only) != 0) read_only = 0;
+        if (read_only) {
+            int writable = 0;
+            if (ioctl(fd, BLKROSET, &writable) != 0) {
+                fprintf(stderr, "%s: make %s writable: %s\n", kTag, vendor_boot, strerror(errno));
+                break;
+            }
+            restore_read_only = true;
+        }
+
         bool written = true;
         for (size_t off : offsets) {
             if (RegionAt(dtb, off) == region) continue;
@@ -333,6 +349,12 @@ int Run(const char* running_fdt, const char* vendor_boot) {
                region.c_str());
         ret = 0;
     } while (false);
+    if (restore_read_only) {
+        int read_only = 1;
+        if (ioctl(fd, BLKROSET, &read_only) != 0) {
+            fprintf(stderr, "%s: make %s read-only: %s\n", kTag, vendor_boot, strerror(errno));
+        }
+    }
     close(fd);
     return ret;
 }
