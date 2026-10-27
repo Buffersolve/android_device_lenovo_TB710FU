@@ -1,10 +1,22 @@
-# Package variant (dtb region) for the updater, see init.tb520fu.region.sh
+# Region of the board (PRC or ROW), see init.tb520fu.region.sh
 service vendor.tb520fu-region /vendor/bin/init.tb520fu.region.sh
-    class core
     user root
     group root
     oneshot
     disabled
 
-on early-boot
-    start vendor.tb520fu-region
+# Before keystore and zygote start
+on init
+    exec_start vendor.tb520fu-region
+
+# Properties that differ between the stock PRC and ROW firmware: the product
+# name provisioned for key attestation and the Lenovo market name
+on post-fs && property:ro.vendor.tb520fu.dtb_region=PRC
+    setprop ro.product.name_for_attestation TB710FU_PRC
+    setprop ro.vendor.config.lgsi.market_name "Lenovo Xiaoxin Pad Pro GT"
+    setprop ro.vendor.config.lgsi.short_market_name "Lenovo Xiaoxin Pad Pro GT"
+
+on post-fs && property:ro.vendor.tb520fu.dtb_region=ROW
+    setprop ro.product.name_for_attestation TB710FU
+    setprop ro.vendor.config.lgsi.market_name "Lenovo Yoga Tab"
+    setprop ro.vendor.config.lgsi.short_market_name "Lenovo Yoga Tab"

@@ -67,8 +67,9 @@ TARGET_NO_BOOTLOADER := true
 TARGET_SCREEN_DENSITY := 400
 
 # DTB / DTBO
-# The dtb comes from the installed vendor_boot, not the ROW firmware: LTBox
-# rewrote its region string (ROW -> PRC) so it matches the PRC board.
+# Stock dtb of the PRC firmware. The ROW one only differs in region_country,
+# which the bootloader checks against the board: tb520fu_region_postinstall
+# sets it to the region of the board on install.
 BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_PREBUILT_DTBIMAGE_DIR := $(KERNEL_PATH)/dtb
 BOARD_PREBUILT_DTBOIMAGE := $(KERNEL_PATH)/dtbo.img

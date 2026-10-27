@@ -15,7 +15,7 @@ Maintainer: [Buffersolve](https://github.com/Buffersolve)
 | Display | NT36532 dual-DSI DSC, 3200×2000, `ORIENTATION_270` (reported as 2000×3200), density 400, 30/60/90/120/144 Hz |
 | Touch | Novatek NVT-ts (SPI), pen support |
 | Audio amp | Awinic aw882xx |
-| Stock firmware | `TB710FU_CN_OPEN_USER_Q00019.0_A16_ZUXOS_1.5.04.470_ST_260625` (PRC) |
+| Stock firmware | `TB710FU_CN_OPEN_USER_Q00019.0_A16_ZUXOS_1.5.04.470_ST_260625` (PRC); runs on PRC and ROW tablets, see [PRC and ROW tablets](#prc-and-row-tablets) |
 | Board API level | 34 |
 | Super partition | 20401094656 bytes (group 19318964224) |
 
@@ -114,6 +114,26 @@ Download the zip and `recovery.img` of one build from [SourceForge](https://sour
 2. Boot to recovery, choose Apply update > Apply from ADB and run
    `adb sideload PixelOS_TB710FU-17.0-<date>.zip`.
 3. Coming from stock or another ROM, format data in recovery.
+
+Install only from recovery or the Updater, not by flashing the images with
+fastboot: see [PRC and ROW tablets](#prc-and-row-tablets).
+
+## PRC and ROW tablets
+
+The same build works on PRC (China) and ROW (global) tablets. The bootloader
+compares the `region_country` of the dtb in `vendor_boot` ("PRC" or "ROW")
+with the region of the board (`devinfo`) and powers the tablet off with "The
+current system is not compatible with hardware" when they differ. The stock PRC
+and ROW dtbs are otherwise identical (as are the kernel, `vendor_boot` ramdisk
+and `dtbo`), so the build ships the PRC one and the `system_ext` postinstall
+step (`postinstall/tb520fu_region_postinstall.cpp`) sets the dtb of the new
+slot to the region of the running one, which the bootloader has accepted. If
+it fails, the update is not applied and the current slot stays active.
+
+At boot, `init.tb520fu.region.sh` reads the region of the running dtb and
+`init.tb520fu.region.rc` sets what differs between the PRC and ROW firmware:
+`ro.product.name_for_attestation` (`TB710FU_PRC` / `TB710FU`) and the Lenovo
+market name.
 
 ## OTA updates
 

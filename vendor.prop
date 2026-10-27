@@ -335,18 +335,18 @@ ro.vendor.config.lgsi.olympia_kb.name=Lenovo Wireless KB
 ro.vendor.config.lgsi.olympia_kb.name.row=Lenovo Multi-Device Wireless Keyboard
 ro.vendor.config.lgsi.device.type=pad
 ro.vendor.config.lgsi.hw.version=TB710FU
-ro.vendor.config.lgsi.market_name=Lenovo Xiaoxin Pad Pro GT
-ro.vendor.config.lgsi.short_market_name=Lenovo Xiaoxin Pad Pro GT
 ro.vendor.config.lgsi.project=topaz
 ro.vendor.config.lgsi.platform=qcom
 ro.vendor.config.lgsi.not_support_vibrator=true
+# ro.vendor.config.lgsi.market_name and short_market_name depend on the region
+# of the board, see init.tb520fu.region.rc.
 
 # Device IDs provisioned for key attestation (from the stock vendor and odm
 # build.prop). KeyMint refuses ID attestation (CANNOT_ATTEST_IDS) when the
 # requested IDs differ, e.g. ro.product.name TB710FU vs TB710FU_PRC, or when
-# Build is spoofed for GMS / Play Store.
+# Build is spoofed for GMS / Play Store. The name depends on the region of the
+# board (TB710FU_PRC or TB710FU), see init.tb520fu.region.rc.
 ro.product.brand_for_attestation=Lenovo
 ro.product.device_for_attestation=TB710FU
 ro.product.manufacturer_for_attestation=Lenovo
 ro.product.model_for_attestation=TB710FU
-ro.product.name_for_attestation=TB710FU_PRC

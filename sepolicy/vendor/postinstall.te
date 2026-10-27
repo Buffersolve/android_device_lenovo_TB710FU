@@ -1,0 +1,7 @@
+# tb520fu_region_postinstall (system_ext postinstall step, in Android and
+# recovery): reads the region of the running dtb and writes it to the dtb of
+# the new vendor_boot (/dev/block/by-name/vendor_boot_[ab])
+allow postinstall vendor_sysfs_tb520fu_fdt:file r_file_perms;
+allow postinstall block_device:dir search;
+allow postinstall { block_device boot_block_device }:lnk_file read;
+allow postinstall boot_block_device:blk_file rw_file_perms;

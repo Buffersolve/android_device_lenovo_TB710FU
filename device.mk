@@ -24,9 +24,19 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_vendor=erofs \
     POSTINSTALL_OPTIONAL_vendor=true
 
+# Gives the new vendor_boot dtb the region of the board (PRC or ROW), see
+# postinstall/tb520fu_region_postinstall.cpp. Not optional: if it fails, the
+# update is not applied.
+AB_OTA_POSTINSTALL_CONFIG += \
+    RUN_POSTINSTALL_system_ext=true \
+    POSTINSTALL_PATH_system_ext=bin/tb520fu_region_postinstall \
+    FILESYSTEM_TYPE_system_ext=erofs \
+    POSTINSTALL_OPTIONAL_system_ext=false
+
 PRODUCT_PACKAGES += \
     checkpoint_gc \
-    otapreopt_script
+    otapreopt_script \
+    tb520fu_region_postinstall
 
 # AAPT
 PRODUCT_AAPT_CONFIG := normal

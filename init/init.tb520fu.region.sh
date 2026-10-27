@@ -3,15 +3,13 @@
 # SPDX-FileCopyrightText: 2026 The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 #
-# Region string of the running dtb: the stock ROW dtb says ROW, the LTBox one
-# for PRC boards says PRC. The builds come in both variants (vendor_boot dtb),
-# so the updater uses this to pick the matching package.
+# Region of the running dtb (region_country), which the bootloader has checked
+# against the region of the board: PRC or ROW. init.tb520fu.region.rc sets the
+# properties that differ between the PRC and ROW firmware from it.
 
-if grep -q -a PRC /sys/firmware/fdt; then
-    region=PRC
-elif grep -q -a ROW /sys/firmware/fdt; then
-    region=ROW
-else
-    region=unknown
-fi
+region=$(tr -d '\000' < /sys/firmware/devicetree/base/region_country)
+case "$region" in
+    PRC|ROW) ;;
+    *) region=unknown ;;
+esac
 setprop ro.vendor.tb520fu.dtb_region "$region"

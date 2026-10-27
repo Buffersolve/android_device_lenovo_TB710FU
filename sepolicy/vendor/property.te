@@ -5,5 +5,5 @@ vendor_internal_prop(vendor_fp_prop)
 # PenService, ZuiUDevice and other Lenovo apps
 vendor_public_prop(vendor_lenovo_config_prop)
 
-# ro.vendor.tb520fu.dtb_region: package variant (PRC / ROW), read by the updater
+# ro.vendor.tb520fu.dtb_region: region of the board (PRC / ROW)
 vendor_public_prop(vendor_tb520fu_region_prop)
