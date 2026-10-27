@@ -4,3 +4,7 @@
 # every install and format.
 allow recovery sysfs_fs_f2fs:dir search;
 allow recovery sysfs_fs_f2fs:file r_file_perms;
+
+# Region of the running dtb: shown in the title and copied to the other slot by
+# Advanced > Repair region of other slot (tb520fu_region_postinstall)
+allow recovery vendor_sysfs_tb520fu_fdt:file r_file_perms;

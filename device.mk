@@ -36,7 +36,8 @@ AB_OTA_POSTINSTALL_CONFIG += \
 PRODUCT_PACKAGES += \
     checkpoint_gc \
     otapreopt_script \
-    tb520fu_region_postinstall
+    tb520fu_region_postinstall \
+    tb520fu_region_postinstall.recovery
 
 # AAPT
 PRODUCT_AAPT_CONFIG := normal

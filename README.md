@@ -135,6 +135,20 @@ At boot, `init.tb520fu.region.sh` reads the region of the running dtb and
 `ro.product.name_for_attestation` (`TB710FU_PRC` / `TB710FU`) and the Lenovo
 market name.
 
+The recovery shows the region in its title. Advanced > Repair region of other
+slot sets the dtb of the inactive slot to it, e.g. when a build made before
+this support was installed there on a ROW tablet.
+
+Recovery from a slot with the dtb of the other region:
+
+- One slot still boots (e.g. the stock firmware): select it with
+  `fastboot --set-active=<slot>`, then either install a build from recovery or
+  use Repair region of other slot and switch back to the repaired slot.
+- No slot boots: the recovery boots with the dtb of the active slot too, so
+  flash the stock `vendor_boot.img` of the tablet's region to it
+  (`fastboot flash vendor_boot_<slot> vendor_boot.img`), boot to recovery and
+  install a build: it gets the region of the stock dtb.
+
 ## OTA updates
 
 Unofficial builds include the PixelOS Updater (`net.pixelos.ota`), pointed by

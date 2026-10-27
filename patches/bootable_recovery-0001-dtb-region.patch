@@ -1,0 +1,139 @@
+diff --git a/recovery.cpp b/recovery.cpp
+index 2233484..d6ba591 100644
+--- a/recovery.cpp
++++ b/recovery.cpp
+@@ -24,6 +24,7 @@
+ #include <string.h>
+ #include <sys/mount.h>
+ #include <sys/types.h>
++#include <sys/wait.h>
+ #include <unistd.h>
+ 
+ #include <functional>
+@@ -172,6 +173,75 @@ static bool yes_no(Device* device, const char* question1, const char* question2)
+   return (chosen_item == 1);
+ }
+ 
++// Region of the dtb (region_country, "PRC" or "ROW"), which the Lenovo
++// bootloader checks against the region of the board, and the tool that sets it
++// in the vendor_boot of a slot (device/lenovo/TB710FU/postinstall). The
++// running region is the one the bootloader accepted.
++static constexpr const char* kDtbRegionPath = "/sys/firmware/devicetree/base/region_country";
++static constexpr const char* kDtbRegionTool = "/system/bin/tb520fu_region_postinstall";
++
++static std::string GetDtbRegion() {
++  std::string region;
++  if (!android::base::ReadFileToString(kDtbRegionPath, &region)) return "";
++  // Drop the trailing NUL
++  return std::string(region.c_str());
++}
++
++// Sets the region of the dtb of the inactive slot to the running one, e.g. after
++// installing a build with the dtb of the other region there.
++static void RepairOtherSlotRegion(Device* device) {
++  RecoveryUI* ui = device->GetUI();
++  std::string slot = android::base::GetProperty("ro.boot.slot_suffix", "");
++  if (slot != "_a" && slot != "_b") {
++    ui->Print("Unknown active slot.\n");
++    return;
++  }
++  std::string other = slot == "_a" ? "b" : "a";
++  std::string region = GetDtbRegion();
++  if (region.empty()) {
++    ui->Print("Could not read the region of the board.\n");
++    return;
++  }
++  std::string question = "Set the dtb region of slot " + other + " to " + region + "?";
++  if (!yes_no(device, question.c_str(), "  The bootloader only boots the region of the board.")) {
++    return;
++  }
++
++  int pipefd[2];
++  if (pipe(pipefd) != 0) {
++    ui->Print("pipe failed: %s\n", strerror(errno));
++    return;
++  }
++  pid_t pid = fork();
++  if (pid == 0) {
++    dup2(pipefd[1], STDOUT_FILENO);
++    dup2(pipefd[1], STDERR_FILENO);
++    close(pipefd[0]);
++    close(pipefd[1]);
++    const char* slot_number = other == "a" ? "0" : "1";
++    execl(kDtbRegionTool, kDtbRegionTool, slot_number, nullptr);
++    _exit(127);
++  }
++  close(pipefd[1]);
++  if (pid < 0) {
++    close(pipefd[0]);
++    ui->Print("fork failed: %s\n", strerror(errno));
++    return;
++  }
++  std::string output;
++  android::base::ReadFdToString(pipefd[0], &output);
++  close(pipefd[0]);
++  int status;
++  waitpid(pid, &status, 0);
++  if (!output.empty()) ui->Print("%s", output.c_str());
++  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
++    ui->Print("Slot %s has the %s dtb. To boot it: fastboot --set-active=%s\n", other.c_str(),
++              region.c_str(), other.c_str());
++  } else {
++    ui->Print("Could not set the region of slot %s.\n", other.c_str());
++  }
++}
++
+ bool ask_to_ab_reboot(Device* device) {
+   device->GetUI()->SetProgressType(RecoveryUI::EMPTY);
+   return yes_no(device, "To install additional packages, you need to reboot recovery first",
+@@ -644,6 +714,11 @@ change_menu:
+         choose_recovery_file(device);
+         break;
+ 
++      case Device::REPAIR_DTB_REGION:
++        save_current_log = true;
++        RepairOtherSlotRegion(device);
++        break;
++
+       case Device::ENABLE_ADB:
+         android::base::SetProperty("ro.adb.secure.recovery", "0");
+         android::base::SetProperty("ctl.restart", "adbd");
+@@ -895,6 +970,14 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
+     if (android::base::StartsWith(slot, "_")) slot.erase(0, 1);
+     title_lines.push_back("Active slot: " + slot);
+   }
++  std::string dtb_region = GetDtbRegion();
++  if (!dtb_region.empty()) {
++    title_lines.push_back("Region: " + dtb_region);
++  }
++  if (dtb_region.empty() || access(kDtbRegionTool, X_OK) != 0 ||
++      !android::base::GetBoolProperty("ro.build.ab_update", false)) {
++    device->RemoveMenuItemForAction(Device::REPAIR_DTB_REGION);
++  }
+   ui->SetTitle(title_lines);
+ 
+   ui->ResetKeyInterruptStatus();
+diff --git a/recovery_ui/device.cpp b/recovery_ui/device.cpp
+index db357d7..19d6ea7 100644
+--- a/recovery_ui/device.cpp
++++ b/recovery_ui/device.cpp
+@@ -44,6 +44,7 @@ static std::vector<menu_action_t> g_advanced_actions{
+   { "Reboot to recovery", Device::REBOOT_RECOVERY },
+   { "Mount/unmount system", Device::MOUNT_SYSTEM },
+   { "View recovery logs", Device::VIEW_RECOVERY_LOGS },
++  { "Repair region of other slot", Device::REPAIR_DTB_REGION },
+   { "Enable ADB", Device::ENABLE_ADB },
+   { "Run graphics test", Device::RUN_GRAPHICS_TEST },
+   { "Run locale test", Device::RUN_LOCALE_TEST },
+diff --git a/recovery_ui/include/recovery_ui/device.h b/recovery_ui/include/recovery_ui/device.h
+index d33bda2..63c9e3c 100644
+--- a/recovery_ui/include/recovery_ui/device.h
++++ b/recovery_ui/include/recovery_ui/device.h
+@@ -73,6 +73,7 @@ class Device {
+     SHUTDOWN_FROM_FASTBOOT = 21,
+     WIPE_SYSTEM = 100,
+     ENABLE_ADB = 101,
++    REPAIR_DTB_REGION = 102,
+     MENU_BASE = 200,
+     MENU_WIPE = 202,
+     MENU_ADVANCED = 203,

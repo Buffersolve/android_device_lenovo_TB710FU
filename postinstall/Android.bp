@@ -5,11 +5,13 @@
 
 // Postinstall step of the system_ext partition (AB_OTA_POSTINSTALL_CONFIG in
 // device.mk). Static: it runs from the new system_ext image, both in Android
-// and in recovery.
+// and in recovery. Recovery also has it for Advanced > Repair region of other
+// slot (patches/bootable_recovery-0001).
 cc_binary {
     name: "tb520fu_region_postinstall",
     srcs: ["tb520fu_region_postinstall.cpp"],
     system_ext_specific: true,
+    recovery_available: true,
     static_executable: true,
     cflags: [
         "-Wall",

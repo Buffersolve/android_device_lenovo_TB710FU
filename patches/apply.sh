@@ -56,6 +56,14 @@ if [ ! -f "$CUSTOM/patches/apply.sh" ] && [ -f "$STATE/applied.list" ]; then
     rm -rf "$STATE"
 fi
 
+# bootable/recovery
+# 0001: The Lenovo bootloader only boots dtbs whose region_country (PRC / ROW)
+#       matches the board. Show the region of the running dtb in the title and
+#       add Advanced > Repair region of other slot, which sets it in the
+#       vendor_boot of the inactive slot with tb520fu_region_postinstall.
+apply_patch bootable/recovery \
+    "$PATCHES/bootable_recovery-0001-dtb-region.patch"
+
 # frameworks/base
 # 0001: Lenovo PenService support. Adds android.app.haptic.ZuiPenHapticManager
 #       (+ IZuiPenHapticManager) registered as "zui_pen_haptic", which the
