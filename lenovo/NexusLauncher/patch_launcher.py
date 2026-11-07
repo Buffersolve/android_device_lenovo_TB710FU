@@ -41,7 +41,16 @@ Pixel Launcher update), instead of silently shipping an unpatched launcher.
    the taskbar stays in its home state and never stashes. Make the listener
    read isInLauncher(mState) when it runs.
 
-5. At a Glance weather card did not open anything. Its tap action goes to the
+5. Taskbar stuck open after opening an app from home while another app enters
+   picture-in-picture. getActivityLaunchOptions() sets FLAG_IGNORE_IN_APP for
+   the launch animation. It is cleared when the launcher animates the launch,
+   but a launch collected into the PiP transition of the Shell never reaches
+   the launcher, and the only fallback is onDestroy. FLAG_IGNORE_IN_APP then
+   hides FLAG_IN_APP from the taskbar in every app, until the next launch from
+   the launcher. Clear and apply it when the launcher stops too: the launch is
+   over by then.
+
+6. At a Glance weather card did not open anything. Its tap action goes to the
    Google app smartspace trampoline, which only forwards it when the caller is
    a Google-signed Pixel Launcher ("QSB permission is not trusted"), and this
    one is re-signed. The BcSmartspace card click listeners (classes2.dex) call
@@ -65,6 +74,42 @@ HIDER = "Lcom/android/launcher3/tb710fu/TaskbarQsbHider;"
 WEATHER = "Lcom/android/launcher3/tb710fu/SmartspaceWeather;"
 STARTER = "Lcom/android/systemui/plugins/BcSmartspaceDataPlugin$IntentStarter;"
 TARGET = "Landroid/app/smartspace/SmartspaceTarget;"
+
+INTERACTOR = "Lcom/android/launcher3/taskbar/TaskbarInteractor;"
+UI_CONTROLLER = "Lcom/android/launcher3/taskbar/TaskbarUIController;"
+CONTROLLERS = "Lcom/android/launcher3/taskbar/TaskbarControllers;"
+STASH_CONTROLLER = "Lcom/android/launcher3/taskbar/TaskbarStashController;"
+IGNORE_CLEANER = "Lcom/android/launcher3/tb710fu/TaskbarIgnoreInAppCleaner;"
+# Added to classes.dex: it runs from the launcher onStop event callbacks.
+IGNORE_CLEANER_SMALI = f""".class public final {IGNORE_CLEANER}
+.super Ljava/lang/Object;
+.implements Ljava/lang/Runnable;
+
+.field private final mInteractor:{INTERACTOR}
+
+.method public constructor <init>({INTERACTOR})V
+    .registers 2
+    invoke-direct {{p0}}, Ljava/lang/Object;-><init>()V
+    iput-object p1, p0, {IGNORE_CLEANER}->mInteractor:{INTERACTOR}
+    return-void
+.end method
+
+.method public final run()V
+    .registers 3
+    iget-object p0, p0, {IGNORE_CLEANER}->mInteractor:{INTERACTOR}
+    const/4 v0, 0x0
+    invoke-virtual {{p0, v0}}, {INTERACTOR}->setIgnoreInAppFlagForSync(Z)V
+    iget-object p0, p0, {INTERACTOR}->taskbarUIController:{UI_CONTROLLER}
+    if-eqz p0, :done
+    iget-object p0, p0, {UI_CONTROLLER}->mControllers:{CONTROLLERS}
+    if-eqz p0, :done
+    iget-object p0, p0, {CONTROLLERS}->taskbarStashController:{STASH_CONTROLLER}
+    if-eqz p0, :done
+    invoke-virtual {{p0}}, {STASH_CONTROLLER}->applyState()V
+    :done
+    return-void
+.end method
+"""
 
 
 def edit(root, cls, method, pattern, repl, count):
@@ -138,9 +183,26 @@ def patch_smali(root):
          r"->onConsumerAboutToBeSwitched\(\)V\n)",
          r"\1\n    invoke-direct {p0}, " + consumer + r"->cleanupAfterMotionEvent()V\n", 1)
 
+    # 5. FLAG_IGNORE_IN_APP left set by a launch the launcher did not animate:
+    #    also clear it when the launcher stops
+    add_callback = ("Lcom/android/launcher3/BaseActivity;"
+                    "->addEventCallback(ILjava/lang/Runnable;)V")
+    edit(root, "com/android/launcher3/QuickstepTransitionManager", "getActivityLaunchOptions",
+         r"(?s)(invoke-virtual \{(v\d+), v\d+\}, " + re.escape(INTERACTOR)
+         + r"->setIgnoreInAppFlagForSync\(Z\)V.*?"
+         r"const/4 (v\d+), 0x3\s+invoke-virtual \{(v\d+), \3, (v\d+)\}, "
+         + re.escape(add_callback) + r"\n)",
+         r"\1\n    new-instance \5, " + IGNORE_CLEANER + "\n\n"
+         r"    invoke-direct {\5, \2}, " + IGNORE_CLEANER + "-><init>(" + INTERACTOR + ")V\n\n"
+         r"    const/4 \3, 0x2\n\n"
+         r"    invoke-virtual {\4, \3, \5}, " + add_callback + "\n", 1)
+    path = os.path.join(root, IGNORE_CLEANER[1:-1] + ".smali")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "w").write(IGNORE_CLEANER_SMALI)
+
 
 def patch_smali2(root):
-    # 5. weather card: hand the SmartspaceTarget to SmartspaceWeather
+    # 6. weather card: hand the SmartspaceTarget to SmartspaceWeather
     for action in ("Landroid/app/smartspace/SmartspaceAction;",
                    "Landroid/app/smartspace/uitemplatedata/TapAction;"):
         call = (r"invoke-interface \{([vp]\d+), ([vp]\d+), ([vp]\d+), ([vp]\d+)\}, "

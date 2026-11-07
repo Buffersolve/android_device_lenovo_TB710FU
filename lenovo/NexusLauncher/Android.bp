@@ -7,7 +7,8 @@
 // stock 66dp grid icons, the taskbar search bar is hidden while the hotseat
 // search bar widget flies into place (TaskbarQsbHider), and the transient
 // taskbar no longer stays stuck open in apps (input consumer switched
-// mid-touch, quick switch from home), and the At a Glance weather card opens
+// mid-touch, quick switch from home, launch during picture-in-picture entry),
+// and the At a Glance weather card opens
 // Pixel Weather (SmartspaceWeather; the Google app trampoline it pointed at
 // rejects a re-signed launcher). classes.dex and classes2.dex are edited with
 // baksmali/smali from external/google-smali. The prebuilt comes from
