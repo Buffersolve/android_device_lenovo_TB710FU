@@ -120,6 +120,11 @@ apply_patch frameworks/base \
 #       mic records.
 apply_patch frameworks/base \
     "$PATCHES/frameworks_base-0009-voip-speaker-request-over-a2dp.patch"
+# 0010: A transient, per-display stylus refresh-rate ceiling. The device input
+#       bridge votes for <=120 Hz during scan249/proximity and stylus motion,
+#       releasing it on inactivity or screen-off without changing user settings.
+apply_patch frameworks/base \
+    "$PATCHES/frameworks_base-0010-transient-stylus-refresh-limit.patch"
 # frameworks/av
 # 0001: The default audio policy engine dropped A2DP from the phone strategy for
 #       VoIP (MODE_IN_COMMUNICATION) too, so with the headset's phone calls

@@ -36,14 +36,17 @@ final class StylusMonitor {
     private final Handler mHandler;
     private final PenHaptics mHaptics;
     private final PalmController mPalm;
+    private final PenRefreshRate mRefreshRate;
     private InputMonitor mMonitor;
     private Receiver mReceiver;
 
-    StylusMonitor(Context context, Handler handler, PenHaptics haptics, PalmController palm) {
+    StylusMonitor(Context context, Handler handler, PenHaptics haptics, PalmController palm,
+            PenRefreshRate refreshRate) {
         mContext = context;
         mHandler = handler;
         mHaptics = haptics;
         mPalm = palm;
+        mRefreshRate = refreshRate;
     }
 
     void start() {
@@ -74,6 +77,8 @@ final class StylusMonitor {
         int index = ev.getActionIndex();
         int tool = ev.getToolType(index);
         if (tool != MotionEvent.TOOL_TYPE_STYLUS && tool != MotionEvent.TOOL_TYPE_ERASER) return;
+        // Include MOVE and HOVER_MOVE so a long stroke/hover cannot outlive the vote.
+        mRefreshRate.onStylusActivity();
         int action = ev.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) mPalm.onStylusDown();
         switch (action) {

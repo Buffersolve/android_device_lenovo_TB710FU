@@ -128,6 +128,7 @@ final class PenController implements PenGatt.Listener {
     private final Context mContext;
     private final Handler mHandler;
     private final PenHaptics mHaptics;
+    private final PenStylusMode mStylusMode;
     private final PowerManager mPowerManager;
     private final Pen mAttached = new Pen();
     private final Pen mConnected = new Pen();
@@ -155,17 +156,35 @@ final class PenController implements PenGatt.Listener {
         @Override
         public void onUEvent(UEvent event) {
             // Runs on the UEventObserver thread: copy what we need and hop over.
-            final String type = event.get("TYPE");
+            final String type = ueventField(event, "TYPE");
             final String mac = event.get("MAC");
             final String attached = event.get("ATTACHED");
             final String level = event.get("LEVEL");
             final String charge = event.get("CHARGING_STATE");
             final String penType = event.get("PEN_TYPE");
-            final String tpInfo = event.get("TOUCH_INFORMATION");
+            final String tpInfo = ueventField(event, "TOUCH_INFORMATION");
             Safe.post(mHandler, "pen uevent", () ->
                     onPenUevent(type, mac, attached, level, charge, penType, tpInfo));
         }
     };
+
+    /**
+     * nt36532_ts (ts_touch_info_uevent) adds "UEVENT_TO=PEN_FRAMEWORK TYPE=TP
+     * TOUCH_INFORMATION=%02x" as a single variable, so TYPE and
+     * TOUCH_INFORMATION only exist inside the UEVENT_TO value; the charger
+     * driver sends them as separate variables.
+     */
+    private static String ueventField(UEventObserver.UEvent event, String key) {
+        String value = event.get(key);
+        if (value != null) return value;
+        String combined = event.get("UEVENT_TO");
+        if (combined == null) return null;
+        String prefix = key + "=";
+        for (String token : combined.trim().split("\\s+")) {
+            if (token.startsWith(prefix)) return token.substring(prefix.length());
+        }
+        return null;
+    }
 
     private final ScanCallback mScanCallback = new ScanCallback() {
         @Override
@@ -180,10 +199,12 @@ final class PenController implements PenGatt.Listener {
         if (isParker(mAttached.type)) LenovoHal.setStylusQiCommand(QI_DISCONNECT_PAD);
     });
 
-    PenController(Context context, Handler handler, PenHaptics haptics) {
+    PenController(Context context, Handler handler, PenHaptics haptics,
+            PenStylusMode stylusMode) {
         mContext = context;
         mHandler = handler;
         mHaptics = haptics;
+        mStylusMode = stylusMode;
         mPowerManager = context.getSystemService(PowerManager.class);
     }
 
@@ -516,10 +537,14 @@ final class PenController implements PenGatt.Listener {
                 // onPenConnected() (which arms pen mode) is not called again.
                 // Re-arm it on screen on while a pen is connected, otherwise
                 // the panel treats the stylus as finger input and emits
-                // phantom strokes at offset coordinates.
+                // phantom strokes at offset coordinates. Arm it the way
+                // onPenConnected() does: setPenMode(true) alone writes
+                // support_pen 1 over the 3 (pen linked over BLE) that the
+                // driver restored on resume.
                 if (mScreenOn && mConnected.connectState == BluetoothProfile.STATE_CONNECTED
                         && !TextUtils.isEmpty(mConnected.mac)) {
                     LenovoHal.setPenMode(true);
+                    LenovoHal.setPenBle(false);
                 }
                 break;
         }
@@ -593,6 +618,8 @@ final class PenController implements PenGatt.Listener {
         mConnected.attached = mac.equals(mAttached.mac) ? mAttached.attached : 0;
         if (!TextUtils.isEmpty(name)) mNames.put(mac, name);
 
+        // Stock ROW configures the model-specific TP type before enabling pen mode.
+        mStylusMode.onPenConnected(mConnected.type);
         LenovoHal.setPenMode(true);
         LenovoHal.setPenBle(false);
         updatePenStatusSetting();
@@ -615,6 +642,7 @@ final class PenController implements PenGatt.Listener {
             mGatt = null;
         }
         mHaptics.onPenDisconnected();
+        mStylusMode.onPenDisconnected();
         LenovoHal.setPenMode(false);
         sendBtChanged(0, mac, false);
         mConnected.mac = "";
