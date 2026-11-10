@@ -59,6 +59,8 @@ final class LenovoHal {
     // ITouchscreen.ioctl commands
     static final int IOCTL_QUICK_NOTE = 1;
     static final int IOCTL_ERASER = 2;
+    /** Writes /proc/pen_type, "0" to "5". */
+    static final int IOCTL_PEN_TYPE = 3;
 
     private static final Map<String, IBinder> sBinders = new HashMap<>();
 
@@ -217,6 +219,13 @@ final class LenovoHal {
         return callString(TOUCH, TS_IOCTL, p -> {
             p.writeInt(cmd);
             p.writeString(enable ? "1" : "0");
+        });
+    }
+
+    static String setPenType(int type) {
+        return callString(TOUCH, TS_IOCTL, p -> {
+            p.writeInt(IOCTL_PEN_TYPE);
+            p.writeString(Integer.toString(type));
         });
     }
 

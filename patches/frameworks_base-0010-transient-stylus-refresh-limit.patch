@@ -1,0 +1,249 @@
+From: Madhan
+Subject: [PATCH] display: support a transient, per-display stylus refresh ceiling
+
+Allow a device input bridge to cap only its built-in display during stylus
+proximity and motion, without rewriting user settings. Keep user/app votes
+below the hardware constraint and layout/thermal/low-power/UDFPS votes above.
+
+diff --git a/core/java/android/hardware/display/DisplayManagerInternal.java b/core/java/android/hardware/display/DisplayManagerInternal.java
+index 8ae295dd7..e690d473e 100644
+--- a/core/java/android/hardware/display/DisplayManagerInternal.java
++++ b/core/java/android/hardware/display/DisplayManagerInternal.java
+@@ -276,6 +276,15 @@ public abstract class DisplayManagerInternal {
+             float requestedMaxRefreshRate, boolean requestedMinimalPostProcessing,
+             boolean disableHdrConversion, boolean inTraversal);
+ 
++    /**
++     * Applies a temporary physical refresh-rate ceiling for stylus input on one display.
++     * Pass zero to remove the ceiling. This does not change the user's display settings.
++     * The caller owns the stylus vote and must remove it when stylus activity ends.
++     *
++     * <p>The default implementation does nothing for implementations without a mode director.
++     */
++    public void setStylusRefreshRateLimit(int displayId, float maxRefreshRate) {}
++
+     /**
+      * Applies an offset to the contents of a display, for example to avoid burn-in.
+      * <p>
+diff --git a/services/core/java/com/android/server/display/DisplayManagerService.java b/services/core/java/com/android/server/display/DisplayManagerService.java
+index e2bb1996a..2b7592557 100644
+--- a/services/core/java/com/android/server/display/DisplayManagerService.java
++++ b/services/core/java/com/android/server/display/DisplayManagerService.java
+@@ -6774,6 +6774,11 @@ public final class DisplayManagerService extends SystemService {
+             setDisplayOffsetsInternal(displayId, x, y);
+         }
+ 
++        @Override
++        public void setStylusRefreshRateLimit(int displayId, float maxRefreshRate) {
++            mDisplayModeDirector.setStylusRefreshRateLimit(displayId, maxRefreshRate);
++        }
++
+         @Override
+         public void setDisplayScalingDisabled(int displayId, boolean disableScaling) {
+             setDisplayScalingDisabledInternal(displayId, disableScaling);
+diff --git a/services/core/java/com/android/server/display/mode/DisplayModeDirector.java b/services/core/java/com/android/server/display/mode/DisplayModeDirector.java
+index 32def078f..8a5092bab 100644
+--- a/services/core/java/com/android/server/display/mode/DisplayModeDirector.java
++++ b/services/core/java/com/android/server/display/mode/DisplayModeDirector.java
+@@ -265,6 +265,15 @@ public class DisplayModeDirector {
+         }
+     }
+ 
++    /** Sets or clears a display's transient stylus ceiling without rewriting user preferences. */
++    public void setStylusRefreshRateLimit(int displayId, float maxRefreshRate) {
++        if (displayId < 0 || !Float.isFinite(maxRefreshRate) || maxRefreshRate < 0) {
++            throw new IllegalArgumentException("Invalid stylus refresh-rate limit");
++        }
++        mVotesStorage.updateVote(displayId, Vote.PRIORITY_STYLUS,
++                maxRefreshRate == 0 ? null : Vote.forPhysicalRefreshRates(0, maxRefreshRate));
++    }
++
+     /**
+      * Same as {@link #start(SensorManager)}, but for observers that need to be delayed even more,
+      * for example until SystemUI is ready.
+diff --git a/services/core/java/com/android/server/display/mode/Vote.java b/services/core/java/com/android/server/display/mode/Vote.java
+index a0efef89c..95b16f01f 100644
+--- a/services/core/java/com/android/server/display/mode/Vote.java
++++ b/services/core/java/com/android/server/display/mode/Vote.java
+@@ -115,48 +115,52 @@ interface Vote {
+     // render rate vote can still apply.
+     int PRIORITY_SYNCHRONIZED_RENDER_FRAME_RATE = 13;
+ 
++    // Stylus hardware may need a lower physical rate than the user's or app's preference.
++    // Keep layout, low-power, thermal and fingerprint restrictions above this ceiling.
++    int PRIORITY_STYLUS = 14;
++
+     // Restrict displays max available resolution and refresh rates. It votes [0, LIMIT]
+-    int PRIORITY_LIMIT_MODE = 14;
++    int PRIORITY_LIMIT_MODE = 15;
+ 
+     // To avoid delay in switching between 60HZ -> 90HZ when activating LHBM, set refresh
+     // rate to max value (same as for PRIORITY_UDFPS) on lock screen
+-    int PRIORITY_AUTH_OPTIMIZER_RENDER_FRAME_RATE = 15;
++    int PRIORITY_AUTH_OPTIMIZER_RENDER_FRAME_RATE = 16;
+ 
+     // For concurrent displays we want to limit refresh rate on all displays
+-    int PRIORITY_LAYOUT_LIMITED_REFRESH_RATE = 16;
++    int PRIORITY_LAYOUT_LIMITED_REFRESH_RATE = 17;
+ 
+     // For concurrent displays we want to limit refresh rate on all displays
+-    int PRIORITY_LAYOUT_LIMITED_FRAME_RATE = 17;
++    int PRIORITY_LAYOUT_LIMITED_FRAME_RATE = 18;
+ 
+     // For internal application to limit display modes to specific ids
+-    int PRIORITY_SYSTEM_REQUESTED_MODES = 18;
++    int PRIORITY_SYSTEM_REQUESTED_MODES = 19;
+ 
+     // PRIORITY_LOW_POWER_MODE_MODES limits display modes to specific refreshRate-vsync pairs if
+     // Settings.Global.LOW_POWER_MODE is on.
+     // Lower priority that PRIORITY_LOW_POWER_MODE_RENDER_RATE and if discarded (due to other
+     // higher priority votes), render rate limit can still apply
+-    int PRIORITY_LOW_POWER_MODE_MODES = 19;
++    int PRIORITY_LOW_POWER_MODE_MODES = 20;
+ 
+     // PRIORITY_LOW_POWER_MODE_RENDER_RATE force the render frame rate to [0, 60HZ] if
+     // Settings.Global.LOW_POWER_MODE is on.
+-    int PRIORITY_LOW_POWER_MODE_RENDER_RATE = 20;
++    int PRIORITY_LOW_POWER_MODE_RENDER_RATE = 21;
+ 
+     // PRIORITY_FLICKER_REFRESH_RATE_SWITCH votes for disabling refresh rate switching. If the
+     // higher priority voters' result is a range, it will fix the rate to a single choice.
+     // It's used to avoid refresh rate switches in certain conditions which may result in the
+     // user seeing the display flickering when the switches occur.
+-    int PRIORITY_FLICKER_REFRESH_RATE_SWITCH = 21;
++    int PRIORITY_FLICKER_REFRESH_RATE_SWITCH = 22;
+ 
+     // Force display to [0, 60HZ] if skin temperature is at or above CRITICAL.
+-    int PRIORITY_SKIN_TEMPERATURE = 22;
++    int PRIORITY_SKIN_TEMPERATURE = 23;
+ 
+     // The proximity sensor needs the refresh rate to be locked in order to function, so this is
+     // set to a high priority.
+-    int PRIORITY_PROXIMITY = 23;
++    int PRIORITY_PROXIMITY = 24;
+ 
+     // The Under-Display Fingerprint Sensor (UDFPS) needs the refresh rate to be locked in order
+     // to function, so this needs to be the highest priority of all votes.
+-    int PRIORITY_UDFPS = 24;
++    int PRIORITY_UDFPS = 25;
+ 
+     @IntDef(prefix = { "PRIORITY_" }, value = {
+             PRIORITY_DEFAULT_RENDER_FRAME_RATE,
+@@ -172,6 +176,7 @@ interface Vote {
+             PRIORITY_USER_SETTING_PEAK_RENDER_FRAME_RATE,
+             PRIORITY_SYNCHRONIZED_REFRESH_RATE,
+             PRIORITY_SYNCHRONIZED_RENDER_FRAME_RATE,
++            PRIORITY_STYLUS,
+             PRIORITY_LIMIT_MODE,
+             PRIORITY_AUTH_OPTIMIZER_RENDER_FRAME_RATE,
+             PRIORITY_LAYOUT_LIMITED_REFRESH_RATE,
+@@ -334,6 +339,8 @@ interface Vote {
+                 return "PRIORITY_USER_SETTING_MIN_RENDER_FRAME_RATE";
+             case PRIORITY_USER_SETTING_DISPLAY_PREFERRED_OPTIONS:
+                 return "PRIORITY_USER_SETTING_DISPLAY_PREFERRED_MODE";
++            case PRIORITY_STYLUS:
++                return "PRIORITY_STYLUS";
+             case PRIORITY_LIMIT_MODE:
+                 return "PRIORITY_LIMIT_MODE";
+             case PRIORITY_SYNCHRONIZED_REFRESH_RATE:
+diff --git a/services/tests/displayservicetests/src/com/android/server/display/mode/DisplayModeDirectorTest.java b/services/tests/displayservicetests/src/com/android/server/display/mode/DisplayModeDirectorTest.java
+index 6907adc29..72080eeae 100644
+--- a/services/tests/displayservicetests/src/com/android/server/display/mode/DisplayModeDirectorTest.java
++++ b/services/tests/displayservicetests/src/com/android/server/display/mode/DisplayModeDirectorTest.java
+@@ -39,6 +39,7 @@ import static com.google.common.truth.Truth.assertThat;
+ import static org.junit.Assert.assertArrayEquals;
+ import static org.junit.Assert.assertEquals;
+ import static org.junit.Assert.assertNull;
++import static org.junit.Assert.assertThrows;
+ import static org.junit.Assert.assertTrue;
+ import static org.mockito.ArgumentMatchers.anyInt;
+ import static org.mockito.ArgumentMatchers.eq;
+@@ -426,6 +427,88 @@ public class DisplayModeDirectorTest {
+         return refreshRates;
+     }
+ 
++    @Test
++    public void testStylusLimitIsTransientAndDisplayScoped() {
++        DisplayModeDirector director = createDirectorFromRefreshRateArray(
++                new float[]{60, 90, 120, 144}, 1, 144,
++                new int[]{DISPLAY_ID, DISPLAY_ID_2});
++        Vote userPeak = Vote.forPhysicalRefreshRates(0, 144);
++        SparseArray<Vote> votes = new SparseArray<>();
++        votes.put(Vote.PRIORITY_USER_SETTING_PEAK_REFRESH_RATE, userPeak);
++        SparseArray<SparseArray<Vote>> votesByDisplay = new SparseArray<>();
++        votesByDisplay.put(DISPLAY_ID, votes);
++        votesByDisplay.put(DISPLAY_ID_2, votes.clone());
++        director.injectVotesByDisplay(votesByDisplay);
++
++        director.setStylusRefreshRateLimit(DISPLAY_ID, 120);
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID).primary.physical.max)
++                .isEqualTo(120f);
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID_2).primary.physical.max)
++                .isEqualTo(144f);
++        assertThat(director.getVote(DISPLAY_ID, Vote.PRIORITY_USER_SETTING_PEAK_REFRESH_RATE))
++                .isSameInstanceAs(userPeak);
++
++        director.setStylusRefreshRateLimit(DISPLAY_ID, 0);
++        assertNull(director.getVote(DISPLAY_ID, Vote.PRIORITY_STYLUS));
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID).primary.physical.max)
++                .isEqualTo(144f);
++    }
++
++    @Test
++    public void testStylusLimitDoesNotRaiseUserCeiling() {
++        DisplayModeDirector director = createDirectorFromRefreshRateArray(
++                new float[]{60, 120, 144}, 1, 144);
++        SparseArray<Vote> votes = new SparseArray<>();
++        votes.put(Vote.PRIORITY_USER_SETTING_PEAK_REFRESH_RATE,
++                Vote.forPhysicalRefreshRates(0, 60));
++        SparseArray<SparseArray<Vote>> votesByDisplay = new SparseArray<>();
++        votesByDisplay.put(DISPLAY_ID, votes);
++        director.injectVotesByDisplay(votesByDisplay);
++
++        director.setStylusRefreshRateLimit(DISPLAY_ID, 120);
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID).primary.physical.max)
++                .isEqualTo(60f);
++    }
++
++    @Test
++    public void testStylusLimitOverridesHighUserMinimumButRespectsThermals() {
++        DisplayModeDirector director = createDirectorFromRefreshRateArray(
++                new float[]{60, 120, 144}, 1, 144);
++        SparseArray<Vote> votes = new SparseArray<>();
++        votes.put(Vote.PRIORITY_USER_SETTING_MIN_RENDER_FRAME_RATE,
++                Vote.forRenderFrameRates(144, Float.POSITIVE_INFINITY));
++        votes.put(Vote.PRIORITY_APP_REQUEST_BASE_MODE_REFRESH_RATE,
++                Vote.forBaseModeRefreshRate(144));
++        SparseArray<SparseArray<Vote>> votesByDisplay = new SparseArray<>();
++        votesByDisplay.put(DISPLAY_ID, votes);
++        director.injectVotesByDisplay(votesByDisplay);
++        director.setStylusRefreshRateLimit(DISPLAY_ID, 120);
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID).primary.physical.max)
++                .isEqualTo(120f);
++
++        votes.put(Vote.PRIORITY_STYLUS, director.getVote(DISPLAY_ID, Vote.PRIORITY_STYLUS));
++        votes.put(Vote.PRIORITY_SKIN_TEMPERATURE, Vote.forPhysicalRefreshRates(0, 60));
++        votesByDisplay.put(DISPLAY_ID, votes);
++        director.injectVotesByDisplay(votesByDisplay);
++        assertThat(director.getDesiredDisplayModeSpecs(DISPLAY_ID).primary.physical.max)
++                .isEqualTo(60f);
++        assertTrue(Vote.PRIORITY_STYLUS < Vote.PRIORITY_LOW_POWER_MODE_RENDER_RATE);
++        assertTrue(Vote.PRIORITY_STYLUS < Vote.PRIORITY_LAYOUT_LIMITED_REFRESH_RATE);
++        assertTrue(Vote.PRIORITY_STYLUS < Vote.PRIORITY_UDFPS);
++    }
++
++    @Test
++    public void testStylusLimitRejectsInvalidRequests() {
++        DisplayModeDirector director = createDirectorFromFpsRange(60, 144);
++        for (float limit : new float[]{-1, Float.NaN, Float.POSITIVE_INFINITY}) {
++            assertThrows(IllegalArgumentException.class,
++                    () -> director.setStylusRefreshRateLimit(DISPLAY_ID, limit));
++        }
++        assertThrows(IllegalArgumentException.class,
++                () -> director.setStylusRefreshRateLimit(-1, 120));
++        assertNull(director.getVote(DISPLAY_ID, Vote.PRIORITY_STYLUS));
++    }
++
+     @Test
+     public void testDisplayModeVoting() {
+         // With no votes present, DisplayModeDirector should allow any refresh rate.

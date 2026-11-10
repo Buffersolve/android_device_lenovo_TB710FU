@@ -59,6 +59,8 @@ public final class InputCore {
     final WifiSarController mWifiSar;
     final PenScreenshot mPenScreenshot;
     final PenMagnifier mPenMagnifier;
+    final PenStylusMode mStylusMode;
+    final PenRefreshRate mPenRefreshRate;
     private InputExtension mExtension;
     private StylusMonitor mStylusMonitor;
     private boolean mStarted;
@@ -80,7 +82,9 @@ public final class InputCore {
         mHandler = new Handler(thread.getLooper());
 
         mHaptics = new PenHaptics(context, mHandler);
-        mPen = new PenController(context, mHandler, mHaptics);
+        mPenRefreshRate = new PenRefreshRate(context, mHandler);
+        mStylusMode = new PenStylusMode(context, mHandler, mPenRefreshRate::onStylusActivity);
+        mPen = new PenController(context, mHandler, mHaptics, mStylusMode);
         mPenKeys = new PenKeys(context, mHandler, mPen);
         mKeyboard = new KeyboardController(context, mHandler);
         mBattery = new BatteryController(context, mHandler);
@@ -147,6 +151,8 @@ public final class InputCore {
         Safe.run("keyboard desktop mode", mDesktopMode::start).run();
         Safe.run("wifi sar", mWifiSar::start).run();
         Safe.run("haptics", mHaptics::start).run();
+        Safe.run("pen refresh rate", mPenRefreshRate::start).run();
+        Safe.run("stylus mode", mStylusMode::start).run();
         Safe.run("pen", mPen::start).run();
         Safe.run("stylus screenshot", mPenScreenshot::start).run();
         Safe.run("stylus magnifier", mPenMagnifier::start).run();
@@ -154,7 +160,8 @@ public final class InputCore {
             Safe.run("custom", mExtension::start).run();
         }
         Safe.run("stylus monitor", () -> {
-            mStylusMonitor = new StylusMonitor(mContext, mHandler, mHaptics, mPalm);
+            mStylusMonitor = new StylusMonitor(mContext, mHandler, mHaptics, mPalm,
+                    mPenRefreshRate);
             mStylusMonitor.start();
         }).run();
     }
@@ -166,7 +173,7 @@ public final class InputCore {
         // by keylayout/hall_irq.kl and handled natively, so they must not be
         // consumed here (consuming would stop the power keycode from reaching
         // PhoneWindowManager).
-        if (mPenKeys.handle(event) || mKeyboard.handle(event)) {
+        if (mStylusMode.handle(event) || mPenKeys.handle(event) || mKeyboard.handle(event)) {
             return true;
         }
         return mExtension != null && mExtension.handleKey(event);
